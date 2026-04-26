@@ -21,14 +21,18 @@ point cube[8] = {
     {-1, -1,  1}, {1, -1,  1}, {1, 1,  1}, {-1, 1,  1}  
 };
 
+int is_dragging = 0;
+int last_mouse_x = 0;
+int last_mouse_y = 0;
+float angle_x = 0.0f;
+float angle_y = 0.0f;
+
 
 static inline void draw_pixel(uint32_t* pixels, int x, int y, uint32_t color);
 void draw_line(uint32_t* pixels, point *a, point *b, uint32_t color);
 int project(point *v, point* p_v);
 void draw_cube(uint32_t* pixels, point* cube, uint32_t color);
-void traslate_cube(point* cube, point* cube_traslated);
-void rotate_cube(point* cube);
-
+point rotate_point(point p, float angle_x, float angle_y);
 
 
 int main(void){
@@ -67,6 +71,10 @@ int main(void){
     uint32_t last_time = SDL_GetTicks(); 
     uint32_t current_time;
     uint32_t frame_count = 0;
+    point cube_transformed[8];
+
+    int delta_x;
+    int delta_y;
 
     int running = 1;
     SDL_Event event;
@@ -74,9 +82,35 @@ int main(void){
     //t_init = clock();
 
     while (running) {
-        //events (close window)
-        while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT) running = 0;
+        //events
+        while (SDL_PollEvent(&event)) { 
+            if (event.type == SDL_QUIT) running = 0; //close window
+        else if (event.type == SDL_MOUSEBUTTONDOWN) { //mouse left click down
+            if (event.button.button == SDL_BUTTON_LEFT) {
+                is_dragging = 1;
+                last_mouse_x = event.button.x;
+                last_mouse_y = event.button.y;
+            }
+        }
+        else if (event.type == SDL_MOUSEBUTTONUP) { //mouse left click up
+            if (event.button.button == SDL_BUTTON_LEFT) {
+                is_dragging = 0;
+            }
+        }
+        else if (event.type == SDL_MOUSEMOTION) { //mouse movement
+            if (is_dragging) {
+                delta_x = event.motion.x - last_mouse_x;
+                delta_y = event.motion.y - last_mouse_y;
+
+                angle_y -= delta_x * 0.01f; 
+                angle_x += delta_y * 0.01f; 
+
+                last_mouse_x = event.motion.x;
+                last_mouse_y = event.motion.y;
+            }
+        }
+
+
         }
 
 
@@ -84,10 +118,11 @@ int main(void){
       
 
 
-        rotate_cube(cube);
-        point cube_traslated[8];
-        traslate_cube(cube, cube_traslated);
-        draw_cube(pixels, cube_traslated, 0xFFFF0000);
+        for(int i = 0; i < 8; i++){
+            cube_transformed[i] = rotate_point(cube[i], angle_x, angle_y);
+            cube_transformed[i].z += 3.0f;
+        }
+        draw_cube(pixels, cube_transformed, 0xFFFF0000);
 
         //update window
         SDL_UpdateTexture(color_buffer_texture, NULL, pixels, WIDTH * sizeof(uint32_t));
@@ -134,6 +169,7 @@ static inline void draw_pixel(uint32_t* pixels, int x, int y, uint32_t color) {
 
 
 void draw_line(uint32_t* pixels, point *a, point *b, uint32_t color){
+    //Bresenham algorithm
     int x0 = a->x;
     int y0 = a->y;
     int x1 = b->x;
@@ -204,11 +240,19 @@ void draw_cube(uint32_t* pixels, point* cube, uint32_t color){
     draw_line(pixels, &cube_projected[3], &cube_projected[7], 0xFF00FF00);
 }
 
-void traslate_cube(point* cube, point* cube_traslated){
-    for(int i = 0; i < 8; i++){
-        cube_traslated[i] = cube[i];
-        cube_traslated[i].z += 3;
-    }
-}
 
-void rotate_cube(point* cube){}
+point rotate_point(point p, float angle_x, float angle_y){
+    point rotated = p;
+
+    float cos_x = cos(angle_x);
+    float sin_x = sin(angle_x);
+    rotated.y = rotated.y * cos_x - rotated.z * sin_x;
+    rotated.z = p.y * sin_x + rotated.z * cos_x;
+
+    float cos_y = cos(angle_y);
+    float sin_y = sin(angle_y);
+    rotated.x = rotated.x * cos_y - rotated.z * sin_y;
+    rotated.z = p.x * sin_y + rotated.z *cos_y;
+    
+    return rotated;
+}
