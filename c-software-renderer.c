@@ -13,12 +13,13 @@ typedef struct point{
     float x;
     float y;
     float z;
-}point;
+}point, vec3;
 
 typedef struct triangle{
     int a;
     int b;
     int c;
+    char visible;
 }triangle;
 
 typedef struct edge{
@@ -28,6 +29,8 @@ typedef struct edge{
 
 typedef struct figure{
     point* vertices;
+    point* transformed_vertices;
+    int n_vertices;
     triangle* triangles;
     int n_triangles;
     edge* edges;
@@ -50,8 +53,14 @@ float angle_y = 0.0f;
 static inline void draw_pixel(uint32_t* pixels, int x, int y, uint32_t color);
 void draw_line(uint32_t* pixels, point *a, point *b, uint32_t color);
 int project(point *v, point* p_v);
+void draw_triangles(uint32_t* pixels, figure* figure);
 void draw_edges(uint32_t* pixels, point* vertices, edge* edges,int n_edges, uint32_t color);
 point rotate_point(point p, float angle_x, float angle_y);
+void rotate_figure(figure* figure);
+void calc_triangle_visibility(figure* figure, vec3 camera_pos);
+vec3 vec3_sub(vec3 v1, vec3 v2);
+vec3 vec3_cross(vec3 u, vec3 v);
+float vec3_dot(vec3 v1, vec3 v2);
 
 
 int main(void){
@@ -83,30 +92,36 @@ int main(void){
         WIDTH, HEIGHT
     );
 
+    vec3 camera_pos = (vec3){0, 0, 0};
+
 
     figure cube;
     cube.vertices = (point[]){
     {-1, -1, -1}, {1, -1, -1}, {1, 1, -1}, {-1, 1, -1},
     {-1, -1,  1}, {1, -1,  1}, {1, 1,  1}, {-1, 1,  1}  
     };
+    cube.transformed_vertices = (point[]){
+    {-1, -1, -1}, {1, -1, -1}, {1, 1, -1}, {-1, 1, -1},
+    {-1, -1,  1}, {1, -1,  1}, {1, 1,  1}, {-1, 1,  1}  
+    };
     cube.triangles = (triangle[]){
         //front face (z = -1)
-        {0, 1, 2}, {0, 2, 3},
+        {0, 1, 2, 1}, {0, 2, 3, 1},
         
         //back face (z = 1)
-        {5, 4, 7}, {5, 7, 6},
+        {5, 4, 7, 1}, {5, 7, 6, 1},
         
         //left face (x = -1)
-        {4, 0, 3}, {4, 3, 7},
+        {4, 0, 3, 1}, {4, 3, 7, 1},
         
         //rigth face (x = 1)
-        {1, 5, 6}, {1, 6, 2},
+        {1, 5, 6, 1}, {1, 6, 2, 1},
         
         //upper face (y = 1)
-        {3, 2, 6}, {3, 6, 7},
+        {3, 2, 6, 1}, {3, 6, 7, 1},
         
         //lower face (y = -1)
-        {4, 5, 1}, {4, 1, 0}
+        {4, 5, 1, 1}, {4, 1, 0, 1}
     };
     cube.edges = (edge[]){
         //front face
@@ -120,6 +135,7 @@ int main(void){
     };
     cube.n_triangles = 12;
     cube.n_edges = 12;
+    cube.n_vertices = 8;
     cube.position = (point){0, 0, 0};
     cube.angle_x = 0;
     cube.angle_y = 0;
@@ -133,7 +149,6 @@ int main(void){
     uint32_t last_time = SDL_GetTicks(); 
     uint32_t current_time;
     uint32_t frame_count = 0;
-    point transformed_points[100];
 
     int delta_x;
     int delta_y;
@@ -180,11 +195,13 @@ int main(void){
       
 
 
-        for(int i = 0; i < 8; i++){
-            transformed_points[i] = rotate_point(cube.vertices[i], cube.angle_x, cube.angle_y);
-            transformed_points[i].z += 3.0f;
-        }
-        draw_edges(pixels, transformed_points, cube.edges, cube.n_edges, 0xFFFF0000);
+        rotate_figure(&cube);
+
+        calc_triangle_visibility(&cube, camera_pos);
+
+        draw_triangles(pixels, &cube);
+
+        //draw_edges(pixels, cube.transformed_vertices, cube.edges, cube.n_edges, 0xFFFF0000);
 
         //update window
         SDL_UpdateTexture(color_buffer_texture, NULL, pixels, WIDTH * sizeof(uint32_t));
@@ -223,7 +240,7 @@ int main(void){
 }
 
 
-static inline void draw_pixel(uint32_t* pixels, int x, int y, uint32_t color) {
+static inline void draw_pixel(uint32_t* pixels, int x, int y, uint32_t color){
     if (x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT) {
         pixels[y * WIDTH + x] = color;
     }
@@ -263,6 +280,26 @@ void draw_line(uint32_t* pixels, point *a, point *b, uint32_t color){
             y0 +=sy;
         } 
     }
+}
+
+void draw_triangles(uint32_t* pixels,figure* figure){
+    for(int i = 0; i < figure->n_triangles; i++){
+        if(figure->triangles[i].visible == 1){
+                
+            point vA = figure->transformed_vertices[figure->triangles[i].a];
+            point vB = figure->transformed_vertices[figure->triangles[i].b];
+            point vC = figure->transformed_vertices[figure->triangles[i].c];
+
+            point pA, pB, pC;
+            project(&vA, &pA);
+            project(&vB, &pB);
+            project(&vC, &pC);
+
+            draw_line(pixels, &pA, &pB, 0xFF00FF00); 
+            draw_line(pixels, &pB, &pC, 0xFF00FF00);
+            draw_line(pixels, &pC, &pA, 0xFF00FF00);
+            }
+        }
 }
 
 
@@ -305,4 +342,52 @@ point rotate_point(point p, float angle_x, float angle_y){
     rotated.z = p.x * sin_y + rotated.z *cos_y;
     
     return rotated;
+}
+
+void rotate_figure(figure* figure){
+    for(int i = 0; i < figure->n_vertices; i++){
+        figure->transformed_vertices[i] = rotate_point(figure->vertices[i], figure->angle_x, figure->angle_y);
+        figure->transformed_vertices[i].z += 3.0f;
+    }
+}
+
+void calc_triangle_visibility(figure* figure, vec3 camera_pos){
+    for(int i = 0; i < figure->n_triangles; i++){
+        triangle* tri = &figure->triangles[i];
+        point vertex_a = figure->transformed_vertices[tri->a];
+        point vertex_b = figure->transformed_vertices[tri->b];
+        point vertex_c = figure->transformed_vertices[tri->c];
+
+        vec3 u = vec3_sub((vec3)vertex_b, (vec3)vertex_a);
+        vec3 v = vec3_sub(vertex_c, vertex_a);
+
+        vec3 normal = vec3_cross(v, u);
+
+        vec3 camera_vec = vec3_sub(vertex_a, camera_pos);
+
+        float aliniation = vec3_dot(normal, camera_vec);
+
+        if(aliniation < 0) tri->visible = 1;
+        else tri->visible = 0;
+    }
+}
+
+vec3 vec3_sub(vec3 v1, vec3 v2){
+    vec3 v3;
+    v3.x = v1.x - v2.x;
+    v3.y = v1.y - v2.y;
+    v3.z = v1.z - v2.z;
+    return v3;
+}
+
+vec3 vec3_cross(vec3 u, vec3 v){
+    vec3 w;
+    w.x = (u.y * v.z) - (u.z * v.y);
+    w.y = (u.z * v.x) - (u.x * v.z);
+    w.z = (u.x * v.y) - (u.y * v.x);
+    return w;
+}
+
+float vec3_dot(vec3 v1, vec3 v2){
+    return (v1.x * v2.x) + (v1.y * v2.y) + (v1.z * v2.z);
 }
