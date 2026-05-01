@@ -9,6 +9,8 @@
 
 #define PIXELS_PER_POINT 250
 
+#define SWAP(type, a, b) do { type temp = a; a = b; b = temp; } while (0)
+
 typedef struct point{
     float x;
     float y;
@@ -43,7 +45,7 @@ typedef struct figure{
 
 
 
-int is_dragging = 0;
+char is_dragging = 0;
 int last_mouse_x = 0;
 int last_mouse_y = 0;
 float angle_x = 0.0f;
@@ -53,10 +55,14 @@ float angle_y = 0.0f;
 static inline void draw_pixel(uint32_t* pixels, int x, int y, uint32_t color);
 void draw_line(uint32_t* pixels, point *a, point *b, uint32_t color);
 int project(point *v, point* p_v);
-void draw_triangles(uint32_t* pixels, figure* figure);
+void draw_triangles_edges(uint32_t* pixels, figure* figure);
 void draw_edges(uint32_t* pixels, point* vertices, edge* edges,int n_edges, uint32_t color);
 point rotate_point(point p, float angle_x, float angle_y);
 void rotate_figure(figure* figure);
+void draw_triangles(uint32_t* pixels, float* z_buffer, figure* figure, uint32_t color);
+void draw_triangle(uint32_t* pixels, float* z_buffer, figure* figure, triangle* triangle, uint32_t color);
+void draw_horizontal_line(uint32_t* pixels, float* z_buffer, int y,int x_left,int x_rigth ,float inv_z_left,float inv_z_rigth ,uint32_t color);
+static inline float interpolate(int y, int y0, int y1, float v0, float v1);
 void calc_triangle_visibility(figure* figure, vec3 camera_pos);
 vec3 vec3_sub(vec3 v1, vec3 v2);
 vec3 vec3_cross(vec3 u, vec3 v);
@@ -83,7 +89,8 @@ int main(void){
 
     SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
-    uint32_t pixels[WIDTH * HEIGHT];
+    uint32_t* pixels = (uint32_t*)malloc(WIDTH * HEIGHT * sizeof(uint32_t));
+    float* z_buffer = (float*)malloc(WIDTH * HEIGHT * sizeof(float)); //buffer that allocate de depth of each pixel
 
     SDL_Texture* color_buffer_texture = SDL_CreateTexture(
         renderer,
@@ -191,7 +198,10 @@ int main(void){
         }
 
 
-        for (int i = 0; i < WIDTH * HEIGHT; i++) pixels[i] = 0xFF000000;
+        for (int i = 0; i < WIDTH * HEIGHT; i++){
+            pixels[i] = 0xFF000000;
+            z_buffer[i] = 0;
+        } 
       
 
 
@@ -199,7 +209,9 @@ int main(void){
 
         calc_triangle_visibility(&cube, camera_pos);
 
-        draw_triangles(pixels, &cube);
+        draw_triangles(pixels, z_buffer, &cube, 0xFFFF0000);
+
+        draw_triangles_edges(pixels, &cube);
 
         //draw_edges(pixels, cube.transformed_vertices, cube.edges, cube.n_edges, 0xFFFF0000);
 
@@ -226,6 +238,9 @@ int main(void){
     //sec = (double)(t_final - t_init) / CLOCKS_PER_SEC;
 
     //long long frames_per_sec = frames / (long long)sec;
+
+    free(pixels);
+    free(z_buffer);
 
     SDL_DestroyTexture(color_buffer_texture);
     SDL_DestroyRenderer(renderer);
@@ -282,7 +297,7 @@ void draw_line(uint32_t* pixels, point *a, point *b, uint32_t color){
     }
 }
 
-void draw_triangles(uint32_t* pixels,figure* figure){
+void draw_triangles_edges(uint32_t* pixels,figure* figure){
     for(int i = 0; i < figure->n_triangles; i++){
         if(figure->triangles[i].visible == 1){
                 
@@ -291,25 +306,27 @@ void draw_triangles(uint32_t* pixels,figure* figure){
             point vC = figure->transformed_vertices[figure->triangles[i].c];
 
             point pA, pB, pC;
-            project(&vA, &pA);
-            project(&vB, &pB);
-            project(&vC, &pC);
-
-            draw_line(pixels, &pA, &pB, 0xFF00FF00); 
-            draw_line(pixels, &pB, &pC, 0xFF00FF00);
-            draw_line(pixels, &pC, &pA, 0xFF00FF00);
+            if (project(&vA, &pA) == 0 && 
+                project(&vB, &pB) == 0 && 
+                project(&vC, &pC) == 0) {
+                
+                draw_line(pixels, &pA, &pB, 0xFF00FF00); 
+                draw_line(pixels, &pB, &pC, 0xFF00FF00);
+                draw_line(pixels, &pC, &pA, 0xFF00FF00);
             }
         }
+    }
 }
 
 
 int project(point* v, point* p_v) {
     if(v->z == 0){
-        return 1;
+        return -1;
     }
     
     p_v->x = (v->x / v->z) * PIXELS_PER_POINT + (WIDTH / 2);
     p_v->y = (v->y / v->z) * PIXELS_PER_POINT + (HEIGHT / 2);
+    p_v->z = v->z;
 
     return 0;
 }
@@ -317,8 +334,9 @@ int project(point* v, point* p_v) {
 void draw_edges(uint32_t* pixels, point* vertices, edge* edges, int n_edges, uint32_t color){
     point projected_points[100];
     for(int i = 0; i < 8; i++){
-        project(&vertices[i], &projected_points[i]);
-        projected_points[i].z += 3.0f;
+        if (project(&vertices[i], &projected_points[i]) == 0) {
+            projected_points[i].z += 3.0f;
+        }
     }
 
     for(int i = 0; i < n_edges; i++){
@@ -349,6 +367,112 @@ void rotate_figure(figure* figure){
         figure->transformed_vertices[i] = rotate_point(figure->vertices[i], figure->angle_x, figure->angle_y);
         figure->transformed_vertices[i].z += 3.0f;
     }
+}
+
+void draw_horizontal_line(uint32_t* pixels, float* z_buffer, int y,int x_left,int x_rigth ,float inv_z_left,float inv_z_rigth ,uint32_t color){
+    int total_width = x_rigth - x_left;
+    float t, inv_z_pixel;
+    for(int i = x_left; i < x_rigth; i++){
+        if(total_width == 0) t = 0;
+        else t = (float)(i - x_left) / total_width;
+
+        inv_z_pixel = inv_z_left + (t * (inv_z_rigth - inv_z_left));
+
+        if(i >= 0 && i < WIDTH && y >= 0 && y < HEIGHT) {
+            if(inv_z_pixel > z_buffer[(y * WIDTH) + i]) {
+            draw_pixel(pixels, i, y, color);
+            z_buffer[(y * WIDTH) + i] = inv_z_pixel;
+            }
+        }
+    }
+}
+
+void draw_triangles(uint32_t* pixels, float* z_buffer, figure* figure, uint32_t color){
+    for(int i = 0; i < figure->n_triangles; i++){
+        if(figure->triangles[i].visible == 1) draw_triangle(pixels, z_buffer, figure, &figure->triangles[i], color);
+    }
+}
+
+void draw_triangle(uint32_t* pixels, float* z_buffer, figure* figure, triangle* triangle, uint32_t color){
+
+    point p0, p1, p2;
+    if (project(&figure->transformed_vertices[triangle->a], &p0) != 0 ||
+        project(&figure->transformed_vertices[triangle->b], &p1) != 0 ||
+        project(&figure->transformed_vertices[triangle->c], &p2) != 0) {
+        return; 
+    }
+
+
+    float inv_z0 = 1.0 / figure->transformed_vertices[triangle->a].z;
+    float inv_z1 = 1.0 / figure->transformed_vertices[triangle->b].z;
+    float inv_z2 = 1.0 / figure->transformed_vertices[triangle->c].z;
+
+    if (p0.y > p1.y) {
+        SWAP(point, p0, p1);
+        SWAP(float, inv_z0, inv_z1); 
+    }
+    if (p0.y > p2.y) {
+        SWAP(point, p0, p2);
+        SWAP(float, inv_z0, inv_z2);
+    }
+    if (p1.y > p2.y) {
+        SWAP(point, p1, p2);
+        SWAP(float, inv_z1, inv_z2);
+    }
+
+    int total_height = p2.y - p0.y;
+    if (total_height == 0) return;
+
+    for(int i = p0.y; i <= p2.y; i++){
+
+        int is_second_half = (i > p1.y) || (p1.y == p0.y);
+
+        int segment_height = is_second_half ? (p2.y - p1.y) : (p1.y - p0.y);
+        if (segment_height == 0) continue;
+
+        int x_long = (int)interpolate(i, p0.y, p2.y, p0.x, p2.x);
+        float inv_z_long = interpolate(i, p0.y, p2.y, inv_z0, inv_z2);
+
+        int x_sort;
+        float inv_z_sort;
+
+        if (!is_second_half) {
+            //upper part
+            x_sort = (int)interpolate(i, p0.y, p1.y, p0.x, p1.x);
+            inv_z_sort = interpolate(i, p0.y, p1.y, inv_z0, inv_z1);
+        }
+        else {
+            //lower part
+            x_sort = (int)interpolate(i, p1.y, p2.y, p1.x, p2.x);
+            inv_z_sort = interpolate(i, p1.y, p2.y, inv_z1, inv_z2);
+        }
+
+
+        int x_left = x_long;
+        int x_rigth = x_sort;
+        float inv_z_left = inv_z_long;
+        float inv_z_rigth = inv_z_sort;
+
+
+        if (x_left > x_rigth) {
+            SWAP(int, x_left, x_rigth);
+            SWAP(float, inv_z_left, inv_z_rigth);
+        }
+
+        draw_horizontal_line(pixels, z_buffer, i, x_left, x_rigth, inv_z_left, inv_z_rigth, color);
+
+    }
+
+}
+
+static inline float interpolate(int y, int y0, int y1, float v0, float v1){
+    if (y0 == y1) {
+        return v0;
+    }
+    
+    float t = (float)(y - y0) / (y1 - y0);
+    
+    return v0 + t * (v1 - v0);
 }
 
 void calc_triangle_visibility(figure* figure, vec3 camera_pos){
