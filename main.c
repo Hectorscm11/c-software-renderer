@@ -74,22 +74,22 @@ int main(int argc, char* argv[]){
     };
     cube.triangles = (triangle[]){
         //front face (z = -1)
-        {0, 1, 2, 1}, {0, 2, 3, 1},
+        {0, 1, 2, 1, 0}, {0, 2, 3, 1, 0},
         
         //back face (z = 1)
-        {5, 4, 7, 1}, {5, 7, 6, 1},
+        {5, 4, 7, 1, 0}, {5, 7, 6, 1, 0},
         
         //left face (x = -1)
-        {4, 0, 3, 1}, {4, 3, 7, 1},
+        {4, 0, 3, 1, 0}, {4, 3, 7, 1, 0},
         
         //rigth face (x = 1)
-        {1, 5, 6, 1}, {1, 6, 2, 1},
+        {1, 5, 6, 1, 0}, {1, 6, 2, 1, 0},
         
         //upper face (y = 1)
-        {3, 2, 6, 1}, {3, 6, 7, 1},
+        {3, 2, 6, 1, 0}, {3, 6, 7, 1, 0},
         
         //lower face (y = -1)
-        {4, 5, 1, 1}, {4, 1, 0, 1}
+        {4, 5, 1, 1, 0}, {4, 1, 0, 1, 0}
     };
     cube.edges = (edge[]){
         //front face
@@ -168,9 +168,9 @@ int main(int argc, char* argv[]){
 
         rotate_figure(&cube);
 
-        calc_triangle_visibility(&cube, camera_pos);
+        calc_triangle_aliniation(&cube, camera_pos);
 
-        draw_triangles(pixels, z_buffer, &cube, 0xFFFF0000);
+        draw_triangles(pixels, z_buffer, &cube);
 
         if(debug) draw_triangles_edges(pixels, &cube);
 

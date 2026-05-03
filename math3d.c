@@ -1,6 +1,25 @@
 #include <math.h>
 #include "math3d.h"
 
+float vec3_length(vec3 v) {
+    return sqrt((v.x * v.x) + (v.y * v.y) + (v.z * v.z));
+}
+
+vec3 vec3_normalize(vec3 v) {
+    float len = vec3_length(v);
+    
+    
+    if (len == 0.0f) {
+        return v; 
+    }
+    
+    vec3 result;
+    result.x = v.x / len;
+    result.y = v.y / len;
+    result.z = v.z / len;
+    
+    return result;
+}
 
 vec3 vec3_sub(vec3 v1, vec3 v2){
     vec3 v3;
@@ -45,7 +64,7 @@ void rotate_figure(figure* figure){
     }
 }
 
-void calc_triangle_visibility(figure* figure, vec3 camera_pos){
+void calc_triangle_aliniation(figure* figure, vec3 camera_pos){
     for(int i = 0; i < figure->n_triangles; i++){
         triangle* tri = &figure->triangles[i];
         point vertex_a = figure->transformed_vertices[tri->a];
@@ -56,12 +75,15 @@ void calc_triangle_visibility(figure* figure, vec3 camera_pos){
         vec3 v = vec3_sub(vertex_c, vertex_a);
 
         vec3 normal = vec3_cross(v, u);
+        normal = vec3_normalize(normal);
 
         vec3 camera_vec = vec3_sub(vertex_a, camera_pos);
+        camera_vec = vec3_normalize(camera_vec);
 
-        float aliniation = vec3_dot(normal, camera_vec);
+        tri->aliniation = vec3_dot(normal, camera_vec);
 
-        if(aliniation < 0) tri->visible = 1;
+
+        if(tri->aliniation < 0) tri->visible = 1;
         else tri->visible = 0;
     }
 }

@@ -18,7 +18,28 @@ static inline float interpolate(int y, int y0, int y1, float v0, float v1){
     return v0 + t * (v1 - v0);
 }
 
+uint32_t calc_color_brightness(uint32_t color, float aliniation){
+    float brightness = -aliniation;
+
+    if (brightness < 0.2f) {
+        brightness = 0.2f;
+    }
+
+    uint8_t a = (color >> 24) & 0xFF;
+    uint8_t r = (color >> 16) & 0xFF;
+    uint8_t g = (color >> 8) & 0xFF;
+    uint8_t b = color & 0xFF;
+
+    r = (uint8_t)(r * brightness);
+    g = (uint8_t)(g * brightness);
+    b = (uint8_t)(b * brightness);
+
+    return (a << 24) | (r << 16) | (g << 8) | b;
+}
+
 void draw_triangle(uint32_t* pixels, float* z_buffer, figure* figure, triangle* triangle, uint32_t color){
+
+    color = calc_color_brightness(color, triangle->aliniation);
 
     point p0, p1, p2;
     if (project(&figure->transformed_vertices[triangle->a], &p0) != 0 ||
@@ -191,9 +212,9 @@ void draw_horizontal_line(uint32_t* pixels, float* z_buffer, int y,int x_left,in
     }
 }
 
-void draw_triangles(uint32_t* pixels, float* z_buffer, figure* figure, uint32_t color){
+void draw_triangles(uint32_t* pixels, float* z_buffer, figure* figure){
     for(int i = 0; i < figure->n_triangles; i++){
-        if(figure->triangles[i].visible == 1) draw_triangle(pixels, z_buffer, figure, &figure->triangles[i], color);
+        if(figure->triangles[i].visible == 1) draw_triangle(pixels, z_buffer, figure, &figure->triangles[i], 0xFFFFFFFF);
     }
 }
 
