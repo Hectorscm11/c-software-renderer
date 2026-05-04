@@ -17,8 +17,8 @@ typedef struct triangle {
     int a;
     int b;
     int c;
-    char visible;
     float aliniation;
+    char visible;
 } triangle;
 
 typedef struct edge {

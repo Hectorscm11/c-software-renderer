@@ -74,7 +74,7 @@ void calc_triangle_aliniation(figure* figure, vec3 camera_pos){
         vec3 u = vec3_sub((vec3)vertex_b, (vec3)vertex_a);
         vec3 v = vec3_sub(vertex_c, vertex_a);
 
-        vec3 normal = vec3_cross(v, u);
+        vec3 normal = vec3_cross(u, v);
         normal = vec3_normalize(normal);
 
         vec3 camera_vec = vec3_sub(vertex_a, camera_pos);

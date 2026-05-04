@@ -8,6 +8,7 @@
 #include "types.h"
 #include "math3d.h"
 #include "render.h"
+#include "load.h"
 
 #define WIDTH 1400
 #define HEIGHT 900
@@ -27,24 +28,98 @@ int main(int argc, char* argv[]){
     //clock_t t_init, t_final;
     //double sec;
 
+    char* file_path = NULL;
     char debug = 0;
-    if (argc > 1 && strcmp(argv[1], "--debug") == 0) {
-        debug = 1;
+
+    for (int i = 1; i < argc; i++) {
+        
+        if (strcmp(argv[i], "--debug") == 0) {
+            debug = 1;
+        } 
+        else if (strcmp(argv[i], "--file") == 0) {
+            if (i + 1 < argc) {
+                file_path = argv[i + 1]; 
+                i++; 
+            } else {
+                printf("Error: You must writte a path after '--file'\n");
+                printf("Correct use: ./motor [--file <ruta>] [--debug]\n");
+                return 1; 
+            }
+        }
+        else {
+            printf("Unknown argument: %s\n", argv[i]);
+        }
     }
+
+
+    figure cube;
+    if(file_path == NULL){
+        static point def_vertices[] = {
+            {-1, -1, -1}, {1, -1, -1}, {1, 1, -1}, {-1, 1, -1},
+            {-1, -1,  1}, {1, -1,  1}, {1, 1,  1}, {-1, 1,  1}  
+        };
+        static point def_transformed[] = {
+            {-1, -1, -1}, {1, -1, -1}, {1, 1, -1}, {-1, 1, -1},
+            {-1, -1,  1}, {1, -1,  1}, {1, 1,  1}, {-1, 1,  1}  
+        };
+        static triangle def_triangles[] = {
+            // front face (z = -1)
+            {0, 2, 1, 1, 0}, {0, 3, 2, 1, 0},
+            
+            // back face (z = 1)
+            {5, 7, 4, 1, 0}, {5, 6, 7, 1, 0},
+            
+            // left face (x = -1)
+            {4, 3, 0, 1, 0}, {4, 7, 3, 1, 0},
+            
+            // rigth face (x = 1)
+            {1, 6, 5, 1, 0}, {1, 2, 6, 1, 0},
+            
+            // upper face (y = 1)
+            {3, 6, 2, 1, 0}, {3, 7, 6, 1, 0},
+            
+            // lower face (y = -1)
+            {4, 1, 5, 1, 0}, {4, 0, 1, 1, 0}
+        };
+        static edge def_edges[] = {
+            //front face
+            {0, 1}, {1, 2}, {2, 3}, {3, 0},
+            //back face
+            {4, 5}, {5, 6}, {6, 7}, {7, 4},
+            //conecting edges
+            {0, 4}, {1, 5}, {2, 6}, {3, 7}
+        };
+
+        cube.vertices = def_vertices;
+        cube.transformed_vertices = def_transformed;
+        cube.triangles = def_triangles;
+        cube.edges = def_edges;
+        
+        cube.n_triangles = 12;
+        cube.n_edges = 12;
+        cube.n_vertices = 8;
+        cube.position = (point){0, 0, 0};
+        cube.angle_x = 0;
+        cube.angle_y = 0;
+
+    }else if(load_model(&cube, file_path) < 0) {
+        printf("Error: file not found: %s", file_path);
+        exit(0);
+    };
 
 
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        printf("Error al inicializar SDL: %s\n", SDL_GetError());
+        printf("Error trying to inicialice SDL: %s\n", SDL_GetError());
         return 1;
     }
     
-    SDL_Window* window = SDL_CreateWindow("Ventana SDL2", 
+    SDL_Window* window = SDL_CreateWindow("widow", 
         SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
         WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
         
     if (!window) {
-        printf("Error al crear ventana: %s\n", SDL_GetError());
+        printf("Error creating window: %s\n", SDL_GetError());
         return 1;
     }
 
@@ -61,55 +136,6 @@ int main(int argc, char* argv[]){
     );
 
     vec3 camera_pos = (vec3){0, 0, 0};
-
-
-    figure cube;
-    cube.vertices = (point[]){
-    {-1, -1, -1}, {1, -1, -1}, {1, 1, -1}, {-1, 1, -1},
-    {-1, -1,  1}, {1, -1,  1}, {1, 1,  1}, {-1, 1,  1}  
-    };
-    cube.transformed_vertices = (point[]){
-    {-1, -1, -1}, {1, -1, -1}, {1, 1, -1}, {-1, 1, -1},
-    {-1, -1,  1}, {1, -1,  1}, {1, 1,  1}, {-1, 1,  1}  
-    };
-    cube.triangles = (triangle[]){
-        //front face (z = -1)
-        {0, 1, 2, 1, 0}, {0, 2, 3, 1, 0},
-        
-        //back face (z = 1)
-        {5, 4, 7, 1, 0}, {5, 7, 6, 1, 0},
-        
-        //left face (x = -1)
-        {4, 0, 3, 1, 0}, {4, 3, 7, 1, 0},
-        
-        //rigth face (x = 1)
-        {1, 5, 6, 1, 0}, {1, 6, 2, 1, 0},
-        
-        //upper face (y = 1)
-        {3, 2, 6, 1, 0}, {3, 6, 7, 1, 0},
-        
-        //lower face (y = -1)
-        {4, 5, 1, 1, 0}, {4, 1, 0, 1, 0}
-    };
-    cube.edges = (edge[]){
-        //front face
-        {0, 1}, {1, 2}, {2, 3}, {3, 0},
-        
-        //back face
-        {4, 5}, {5, 6}, {6, 7}, {7, 4},
-        
-        //conecting edges
-        {0, 4}, {1, 5}, {2, 6}, {3, 7}
-    };
-    cube.n_triangles = 12;
-    cube.n_edges = 12;
-    cube.n_vertices = 8;
-    cube.position = (point){0, 0, 0};
-    cube.angle_x = 0;
-    cube.angle_y = 0;
-
-
-
 
 
     //long long frames = 0;
