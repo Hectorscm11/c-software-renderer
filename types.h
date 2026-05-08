@@ -7,6 +7,10 @@
 
 #define SWAP(type, a, b) do { type temp = a; a = b; b = temp; } while (0)
 
+typedef struct {
+    float m[4][4];
+} mat4x4;
+
 typedef struct point {
     float x;
     float y;

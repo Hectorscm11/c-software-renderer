@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include "render.h"
+#include "math3d.h"
 
 static inline void draw_pixel(uint32_t* pixels, int x, int y, uint32_t color){
     if (x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT) {
@@ -16,6 +17,11 @@ static inline float interpolate(int y, int y0, int y1, float v0, float v1){
     float t = (float)(y - y0) / (y1 - y0);
     
     return v0 + t * (v1 - v0);
+}
+
+void scale_point(point* p){
+    p->x = (p->x + 1.0f) * 0.5f * (float)WIDTH;
+    p->y = (p->y + 1.0f) * 0.5f * (float)HEIGHT;
 }
 
 uint32_t calc_color_brightness(uint32_t color, float aliniation){
@@ -37,18 +43,27 @@ uint32_t calc_color_brightness(uint32_t color, float aliniation){
     return (a << 24) | (r << 16) | (g << 8) | b;
 }
 
-void draw_triangle(uint32_t* pixels, float* z_buffer, figure* figure, triangle* triangle, uint32_t color){
+void draw_triangle(uint32_t* pixels, float* z_buffer, figure* figure, triangle* triangle, mat4x4 mat, uint32_t color){
 
     color = calc_color_brightness(color, triangle->aliniation);
 
-    point p0, p1, p2;
-    if (project(&figure->transformed_vertices[triangle->a], &p0) != 0 ||
-        project(&figure->transformed_vertices[triangle->b], &p1) != 0 ||
-        project(&figure->transformed_vertices[triangle->c], &p2) != 0) {
-        return; 
-    }
 
+    point p0 = mat4x4_mul_vec3(mat, figure->transformed_vertices[triangle->a]);
+    point p1 = mat4x4_mul_vec3(mat, figure->transformed_vertices[triangle->b]);
+    point p2 = mat4x4_mul_vec3(mat, figure->transformed_vertices[triangle->c]);
 
+    scale_point(&p0);
+    scale_point(&p1);
+    scale_point(&p2);
+
+    p0.x = (int)roundf(p0.x);
+    p0.y = (int)roundf(p0.y);
+    p1.x = (int)roundf(p1.x); 
+    p1.y = (int)roundf(p1.y);
+    p2.x = (int)roundf(p2.x); 
+    p2.y = (int)roundf(p2.y);
+
+    //z-buffer
     float inv_z0 = 1.0 / figure->transformed_vertices[triangle->a].z;
     float inv_z1 = 1.0 / figure->transformed_vertices[triangle->b].z;
     float inv_z2 = 1.0 / figure->transformed_vertices[triangle->c].z;
@@ -146,7 +161,7 @@ void draw_line(uint32_t* pixels, point *a, point *b, uint32_t color){
     }
 }
 
-void draw_triangles_edges(uint32_t* pixels,figure* figure){
+void draw_triangles_edges(uint32_t* pixels,figure* figure, mat4x4 mat){
     for(int i = 0; i < figure->n_triangles; i++){
         if(figure->triangles[i].visible == 1){
                 
@@ -155,36 +170,31 @@ void draw_triangles_edges(uint32_t* pixels,figure* figure){
             point vC = figure->transformed_vertices[figure->triangles[i].c];
 
             point pA, pB, pC;
-            if (project(&vA, &pA) == 0 && 
-                project(&vB, &pB) == 0 && 
-                project(&vC, &pC) == 0) {
-                
-                draw_line(pixels, &pA, &pB, 0xFF00FF00); 
-                draw_line(pixels, &pB, &pC, 0xFF00FF00);
-                draw_line(pixels, &pC, &pA, 0xFF00FF00);
-            }
+            
+            pA = (point)mat4x4_mul_vec3(mat, vA);
+            pB = (point)mat4x4_mul_vec3(mat, vB);
+            pC = (point)mat4x4_mul_vec3(mat, vC);
+
+            
+            scale_point(&pA);
+            scale_point(&pB);
+            scale_point(&pC);
+
+
+            draw_line(pixels, &pA, &pB, 0xFF00FF00); 
+            draw_line(pixels, &pB, &pC, 0xFF00FF00);
+            draw_line(pixels, &pC, &pA, 0xFF00FF00);
+            
         }
     }
 }
 
-int project(point* v, point* p_v) {
-    if(v->z == 0){
-        return -1;
-    }
-    
-    p_v->x = (v->x / v->z) * PIXELS_PER_POINT + (WIDTH / 2);
-    p_v->y = (v->y / v->z) * PIXELS_PER_POINT + (HEIGHT / 2);
-    p_v->z = v->z;
 
-    return 0;
-}
 
-void draw_edges(uint32_t* pixels, point* vertices, edge* edges, int n_edges, uint32_t color){
+void draw_edges(uint32_t* pixels, point* vertices, edge* edges, int n_edges, mat4x4 mat, uint32_t color){
     point projected_points[100];
     for(int i = 0; i < 8; i++){
-        if (project(&vertices[i], &projected_points[i]) == 0) {
-            projected_points[i].z += 3.0f;
-        }
+        projected_points[i] = (point)mat4x4_mul_vec3(mat, vertices[i]);
     }
 
     for(int i = 0; i < n_edges; i++){
@@ -195,29 +205,53 @@ void draw_edges(uint32_t* pixels, point* vertices, edge* edges, int n_edges, uin
 
 
 void draw_horizontal_line(uint32_t* pixels, float* z_buffer, int y,int x_left,int x_rigth ,float inv_z_left,float inv_z_rigth ,uint32_t color){
-    int total_width = x_rigth - x_left;
-    float t, inv_z_pixel;
-    for(int i = x_left; i < x_rigth; i++){
-        if(total_width == 0) t = 0;
-        else t = (float)(i - x_left) / total_width;
+    if (y < 0 || y >= HEIGHT || x_left >= x_rigth || x_rigth <= 0 || x_left >= WIDTH) {
+        return;
+    }
 
-        inv_z_pixel = inv_z_left + (t * (inv_z_rigth - inv_z_left));
+    float z_step = (inv_z_rigth - inv_z_left) / (float)(x_rigth - x_left);
+    float current_inv_z = inv_z_left;
 
-        if(i >= 0 && i < WIDTH && y >= 0 && y < HEIGHT) {
-            if(inv_z_pixel > z_buffer[(y * WIDTH) + i]) {
-            draw_pixel(pixels, i, y, color);
-            z_buffer[(y * WIDTH) + i] = inv_z_pixel;
-            }
+    if (x_left < 0) {
+        current_inv_z += z_step * (float)(-x_left); 
+        x_left = 0;                                
+    }
+
+    if (x_rigth > WIDTH) {
+        x_rigth = WIDTH;
+    }
+
+    int index = y * WIDTH + x_left;
+    for (int i = x_left; i < x_rigth; i++) {
+        if (current_inv_z > z_buffer[index]) {
+            z_buffer[index] = current_inv_z;
+            pixels[index] = color; 
         }
-    }
+        
+        current_inv_z += z_step; 
+        index++;       
+    }       
 }
 
-void draw_triangles(uint32_t* pixels, float* z_buffer, figure* figure){
+void draw_triangles(uint32_t* pixels, float* z_buffer, figure* figure, mat4x4 mat){
     for(int i = 0; i < figure->n_triangles; i++){
-        if(figure->triangles[i].visible == 1) draw_triangle(pixels, z_buffer, figure, &figure->triangles[i], 0xFFFFFFFF);
+        if(figure->triangles[i].visible == 1) draw_triangle(pixels, z_buffer, figure, &figure->triangles[i], mat, 0xFFFFFFFF);
     }
 }
 
 
 
-
+mat4x4 init_projection_matrix(float fov_degrees, float aspect_ratio, float z_near, float z_far) {
+    mat4x4 mat = {0};
+    
+    float fov_rad = 1.0f / tanf(fov_degrees * 0.5f / 180.0f * 3.14159f);
+    
+    mat.m[0][0] = aspect_ratio * fov_rad;
+    mat.m[1][1] = fov_rad;
+    mat.m[2][2] = z_far / (z_far - z_near);
+    mat.m[3][2] = (-z_far * z_near) / (z_far - z_near);
+    mat.m[2][3] = 1.0f;
+    mat.m[3][3] = 0.0f;
+    
+    return mat;
+}

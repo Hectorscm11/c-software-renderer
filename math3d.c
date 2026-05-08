@@ -87,3 +87,20 @@ void calc_triangle_aliniation(figure* figure, vec3 camera_pos){
         else tri->visible = 0;
     }
 }
+
+
+vec3 mat4x4_mul_vec3(mat4x4 m, vec3 v){
+    vec3 u;
+    u.x = v.x * m.m[0][0] + v.y * m.m[1][0] + v.z * m.m[2][0] + m.m[3][0];
+    u.y = v.x * m.m[0][1] + v.y * m.m[1][1] + v.z * m.m[2][1] + m.m[3][1];
+    u.z = v.x * m.m[0][2] + v.y * m.m[1][2] + v.z * m.m[2][2] + m.m[3][2];
+
+    float w = v.x * m.m[0][3] + v.y * m.m[1][3] + v.z * m.m[2][3] + m.m[3][3];
+    if (w != 0.0f) {
+        u.x /= w;
+        u.y /= w;
+        u.z /= w;
+    }
+
+    return u;
+}

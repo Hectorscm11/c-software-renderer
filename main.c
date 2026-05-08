@@ -13,6 +13,10 @@
 #define WIDTH 1400
 #define HEIGHT 900
 
+#define FOV_DEGREES 90
+#define Z_NEAR 0.1
+#define Z_FAR 1000
+
 #define PIXELS_PER_POINT 250
 
 #define SWAP(type, a, b) do { type temp = a; a = b; b = temp; } while (0)
@@ -114,7 +118,7 @@ int main(int argc, char* argv[]){
         return 1;
     }
     
-    SDL_Window* window = SDL_CreateWindow("widow", 
+    SDL_Window* window = SDL_CreateWindow("", 
         SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, 
         WIDTH, HEIGHT, SDL_WINDOW_SHOWN);
         
@@ -137,6 +141,9 @@ int main(int argc, char* argv[]){
 
     vec3 camera_pos = (vec3){0, 0, 0};
 
+    mat4x4 proj_matrix = init_projection_matrix((float)FOV_DEGREES, (float)HEIGHT / (float)WIDTH, (float)Z_NEAR, (float)Z_FAR);
+
+    float fov_degrees = (float)FOV_DEGREES;
 
     //long long frames = 0;
 
@@ -179,6 +186,17 @@ int main(int argc, char* argv[]){
                 last_mouse_x = event.motion.x;
                 last_mouse_y = event.motion.y;
             }
+        }else if (event.type == SDL_MOUSEWHEEL) { //mouse wheel movement
+            if (event.wheel.y > 0 && fov_degrees > 30) {
+                fov_degrees--;
+                proj_matrix = init_projection_matrix((float)fov_degrees, (float)HEIGHT / (float)WIDTH, (float)Z_NEAR, (float)Z_FAR);
+
+            } 
+            else if (event.wheel.y < 0 && fov_degrees < 150) {
+                fov_degrees++;
+                proj_matrix = init_projection_matrix((float)fov_degrees, (float)HEIGHT / (float)WIDTH, (float)Z_NEAR, (float)Z_FAR);
+
+            }
         }
 
 
@@ -196,11 +214,11 @@ int main(int argc, char* argv[]){
 
         calc_triangle_aliniation(&cube, camera_pos);
 
-        draw_triangles(pixels, z_buffer, &cube);
+        draw_triangles(pixels, z_buffer, &cube, proj_matrix);
 
-        if(debug) draw_triangles_edges(pixels, &cube);
+        if(debug) draw_triangles_edges(pixels, &cube, proj_matrix);
 
-        //draw_edges(pixels, cube.transformed_vertices, cube.edges, cube.n_edges, 0xFFFF0000);
+        //draw_edges(pixels, cube.transformed_vertices, cube.edges, cube.n_edges, proj_matrix, 0xFFFF0000);
 
         //update window
         SDL_UpdateTexture(color_buffer_texture, NULL, pixels, WIDTH * sizeof(uint32_t));
