@@ -24,8 +24,8 @@ void scale_point(point* p){
     p->y = (p->y + 1.0f) * 0.5f * (float)HEIGHT;
 }
 
-uint32_t calc_color_brightness(uint32_t color, float aliniation){
-    float brightness = -aliniation;
+uint32_t calc_color_brightness(uint32_t color, float light_aliniation){
+    float brightness = -light_aliniation;
 
     if (brightness < 0.2f) {
         brightness = 0.2f;
@@ -43,14 +43,18 @@ uint32_t calc_color_brightness(uint32_t color, float aliniation){
     return (a << 24) | (r << 16) | (g << 8) | b;
 }
 
-void draw_triangle(uint32_t* pixels, float* z_buffer, figure* figure, triangle* triangle, mat4x4 mat, uint32_t color){
+void draw_triangle(uint32_t* pixels, float* z_buffer, figure* figure, triangle* triangle, mat4x4 proj_mat, mat4x4 view_mat, vec3 light_origin, uint32_t color){
 
-    color = calc_color_brightness(color, triangle->aliniation);
+    float light_aliniation = calc_triangle_aliniation(figure, triangle, light_origin);
+    color = calc_color_brightness(color, light_aliniation);
 
+    point p0 = mat4x4_mul_vec3(view_mat, figure->transformed_vertices[triangle->a]);
+    point p1 = mat4x4_mul_vec3(view_mat, figure->transformed_vertices[triangle->b]);
+    point p2 = mat4x4_mul_vec3(view_mat, figure->transformed_vertices[triangle->c]);
 
-    point p0 = mat4x4_mul_vec3(mat, figure->transformed_vertices[triangle->a]);
-    point p1 = mat4x4_mul_vec3(mat, figure->transformed_vertices[triangle->b]);
-    point p2 = mat4x4_mul_vec3(mat, figure->transformed_vertices[triangle->c]);
+    p0 = mat4x4_mul_vec3(proj_mat, p0);
+    p1 = mat4x4_mul_vec3(proj_mat, p1);
+    p2 = mat4x4_mul_vec3(proj_mat, p2);
 
     scale_point(&p0);
     scale_point(&p1);
@@ -233,9 +237,9 @@ void draw_horizontal_line(uint32_t* pixels, float* z_buffer, int y,int x_left,in
     }       
 }
 
-void draw_triangles(uint32_t* pixels, float* z_buffer, figure* figure, mat4x4 mat){
+void draw_triangles(uint32_t* pixels, float* z_buffer, figure* figure, mat4x4 proj_mat, mat4x4 view_mat, vec3 light_origin){
     for(int i = 0; i < figure->n_triangles; i++){
-        if(figure->triangles[i].visible == 1) draw_triangle(pixels, z_buffer, figure, &figure->triangles[i], mat, 0xFFFFFFFF);
+        if(figure->triangles[i].visible == 1) draw_triangle(pixels, z_buffer, figure, &figure->triangles[i], proj_mat, view_mat, light_origin, 0xFFFFFFFF);
     }
 }
 
@@ -254,4 +258,31 @@ mat4x4 init_projection_matrix(float fov_degrees, float aspect_ratio, float z_nea
     mat.m[3][3] = 0.0f;
     
     return mat;
+}
+
+mat4x4 matrix_make_lookat(vec3 pos, vec3 target, vec3 up) {
+    vec3 forward;
+    forward.x = target.x - pos.x;
+    forward.y = target.y - pos.y;
+    forward.z = target.z - pos.z;
+    forward = vec3_normalize(forward);
+
+    vec3 right = vec3_cross(up, forward);
+    right = vec3_normalize(right);
+
+    
+    vec3 new_up = vec3_cross(forward, right);
+
+    mat4x4 m;
+    
+    m.m[0][0] = right.x;   m.m[0][1] = new_up.x;   m.m[0][2] = forward.x;   m.m[0][3] = 0.0f;
+    m.m[1][0] = right.y;   m.m[1][1] = new_up.y;   m.m[1][2] = forward.y;   m.m[1][3] = 0.0f;
+    m.m[2][0] = right.z;   m.m[2][1] = new_up.z;   m.m[2][2] = forward.z;   m.m[2][3] = 0.0f;
+    
+    m.m[3][0] = -(right.x * pos.x + right.y * pos.y + right.z * pos.z);
+    m.m[3][1] = -(new_up.x * pos.x + new_up.y * pos.y + new_up.z * pos.z);
+    m.m[3][2] = -(forward.x * pos.x + forward.y * pos.y + forward.z * pos.z);
+    m.m[3][3] = 1.0f;
+
+    return m;
 }

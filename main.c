@@ -139,7 +139,10 @@ int main(int argc, char* argv[]){
         WIDTH, HEIGHT
     );
 
-    vec3 camera_pos = (vec3){0, 0, 0};
+    vec3 camera_pos = (vec3){0, 0, -0.5};
+    vec3 camera_target = (vec3){0, 0, 0};
+    vec3 up_vector = (vec3){0, 1, 0};
+    vec3 light_origin = (vec3){4, -3, -1};
 
     mat4x4 proj_matrix = init_projection_matrix((float)FOV_DEGREES, (float)HEIGHT / (float)WIDTH, (float)Z_NEAR, (float)Z_FAR);
 
@@ -163,45 +166,64 @@ int main(int argc, char* argv[]){
         //events
         while (SDL_PollEvent(&event)) { 
             if (event.type == SDL_QUIT) running = 0; //close window
-        else if (event.type == SDL_MOUSEBUTTONDOWN) { //mouse left click down
-            if (event.button.button == SDL_BUTTON_LEFT) {
-                is_dragging = 1;
-                last_mouse_x = event.button.x;
-                last_mouse_y = event.button.y;
+            else if (event.type == SDL_MOUSEBUTTONDOWN) { //mouse left click down
+                if (event.button.button == SDL_BUTTON_LEFT) {
+                    is_dragging = 1;
+                    last_mouse_x = event.button.x;
+                    last_mouse_y = event.button.y;
+                }
+            }
+            else if (event.type == SDL_MOUSEBUTTONUP) { //mouse left click up
+                if (event.button.button == SDL_BUTTON_LEFT) {
+                    is_dragging = 0;
+                }
+            }
+            else if (event.type == SDL_MOUSEMOTION) { //mouse movement
+                if (is_dragging) {
+                    delta_x = event.motion.x - last_mouse_x;
+                    delta_y = event.motion.y - last_mouse_y;
+
+                    cube.angle_y -= delta_x * 0.01f; 
+                    cube.angle_x += delta_y * 0.01f; 
+
+                    last_mouse_x = event.motion.x;
+                    last_mouse_y = event.motion.y;
+                }
+            }else if (event.type == SDL_MOUSEWHEEL) { //mouse wheel movement
+                if (event.wheel.y > 0 && fov_degrees > 30) {
+                    fov_degrees--;
+                    proj_matrix = init_projection_matrix((float)fov_degrees, (float)HEIGHT / (float)WIDTH, (float)Z_NEAR, (float)Z_FAR);
+
+                } 
+                else if (event.wheel.y < 0 && fov_degrees < 150) {
+                    fov_degrees++;
+                    proj_matrix = init_projection_matrix((float)fov_degrees, (float)HEIGHT / (float)WIDTH, (float)Z_NEAR, (float)Z_FAR);
+
+                }
+            }else if (event.type == SDL_KEYDOWN) { //keyboard inputs
+            switch (event.key.keysym.sym) {
+                case SDLK_w:
+                    camera_pos.z += 0.5f;
+                    break;
+                case SDLK_s:
+                    camera_pos.z -= 0.5f;
+                    break;
+                case SDLK_a:
+                    camera_pos.x -= 0.5f;
+                    camera_target.x -= 0.5f;
+                    break;
+                case SDLK_d:
+                    camera_pos.x += 0.5f;
+                    camera_target.x += 0.5f;
+                    break;
+                case SDLK_ESCAPE:
+                    running = 0;
+                    break;
             }
         }
-        else if (event.type == SDL_MOUSEBUTTONUP) { //mouse left click up
-            if (event.button.button == SDL_BUTTON_LEFT) {
-                is_dragging = 0;
-            }
-        }
-        else if (event.type == SDL_MOUSEMOTION) { //mouse movement
-            if (is_dragging) {
-                delta_x = event.motion.x - last_mouse_x;
-                delta_y = event.motion.y - last_mouse_y;
-
-                cube.angle_y -= delta_x * 0.01f; 
-                cube.angle_x += delta_y * 0.01f; 
-
-                last_mouse_x = event.motion.x;
-                last_mouse_y = event.motion.y;
-            }
-        }else if (event.type == SDL_MOUSEWHEEL) { //mouse wheel movement
-            if (event.wheel.y > 0 && fov_degrees > 30) {
-                fov_degrees--;
-                proj_matrix = init_projection_matrix((float)fov_degrees, (float)HEIGHT / (float)WIDTH, (float)Z_NEAR, (float)Z_FAR);
-
-            } 
-            else if (event.wheel.y < 0 && fov_degrees < 150) {
-                fov_degrees++;
-                proj_matrix = init_projection_matrix((float)fov_degrees, (float)HEIGHT / (float)WIDTH, (float)Z_NEAR, (float)Z_FAR);
-
-            }
         }
 
-
-        }
-
+        mat4x4 mat_view = matrix_make_lookat(camera_pos, camera_target, up_vector);
 
         for (int i = 0; i < WIDTH * HEIGHT; i++){
             pixels[i] = 0xFF000000;
@@ -209,12 +231,11 @@ int main(int argc, char* argv[]){
         } 
       
 
-
         rotate_figure(&cube);
 
-        calc_triangle_aliniation(&cube, camera_pos);
+        calc_triangles_aliniation(&cube, camera_pos);
 
-        draw_triangles(pixels, z_buffer, &cube, proj_matrix);
+        draw_triangles(pixels, z_buffer, &cube, proj_matrix, mat_view, light_origin);
 
         if(debug) draw_triangles_edges(pixels, &cube, proj_matrix);
 

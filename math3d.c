@@ -64,27 +64,36 @@ void rotate_figure(figure* figure){
     }
 }
 
-void calc_triangle_aliniation(figure* figure, vec3 camera_pos){
-    for(int i = 0; i < figure->n_triangles; i++){
-        triangle* tri = &figure->triangles[i];
-        point vertex_a = figure->transformed_vertices[tri->a];
-        point vertex_b = figure->transformed_vertices[tri->b];
-        point vertex_c = figure->transformed_vertices[tri->c];
-
-        vec3 u = vec3_sub((vec3)vertex_b, (vec3)vertex_a);
-        vec3 v = vec3_sub(vertex_c, vertex_a);
-
-        vec3 normal = vec3_cross(u, v);
-        normal = vec3_normalize(normal);
-
-        vec3 camera_vec = vec3_sub(vertex_a, camera_pos);
-        camera_vec = vec3_normalize(camera_vec);
-
-        tri->aliniation = vec3_dot(normal, camera_vec);
+float calc_triangle_aliniation(figure* figure, triangle* tri, vec3 vec) { 
+    point vertex_a = figure->transformed_vertices[tri->a];
+    point vertex_b = figure->transformed_vertices[tri->b];
+    point vertex_c = figure->transformed_vertices[tri->c];
 
 
-        if(tri->aliniation < 0) tri->visible = 1;
-        else tri->visible = 0;
+    vec3 u = vec3_sub((vec3)vertex_b, (vec3)vertex_a);
+    vec3 v = vec3_sub((vec3)vertex_c, (vec3)vertex_a); 
+
+    vec3 normal = vec3_cross(u, v);
+    normal = vec3_normalize(normal);
+
+    vec3 camera_vec = vec3_sub((vec3)vertex_a, vec); 
+    camera_vec = vec3_normalize(camera_vec);
+
+    return vec3_dot(normal, camera_vec);
+}
+
+void calc_triangles_aliniation(figure* figure, vec3 camera_pos) {
+    for(int i = 0; i < figure->n_triangles; i++) {
+ 
+        triangle* tri = &figure->triangles[i]; 
+
+        tri->aliniation = calc_triangle_aliniation(figure, tri, camera_pos);
+
+        if(tri->aliniation < 0) {
+            tri->visible = 1;
+        } else {
+            tri->visible = 0;
+        }
     }
 }
 
