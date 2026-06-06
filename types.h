@@ -4,6 +4,7 @@
 #define WIDTH 1400
 #define HEIGHT 900
 #define PIXELS_PER_POINT 250
+#define PI 3.14159265358979323846f
 
 #define SWAP(type, a, b) do { type temp = a; a = b; b = temp; } while (0)
 

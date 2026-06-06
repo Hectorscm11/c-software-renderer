@@ -34,9 +34,10 @@ int main(int argc, char* argv[]){
 
     char* file_path = NULL;
     char debug = 0;
+    float scale_factor = 1.0f;
+    float movement_factor = 0.1f;
 
     for (int i = 1; i < argc; i++) {
-        
         if (strcmp(argv[i], "--debug") == 0) {
             debug = 1;
         } 
@@ -50,6 +51,16 @@ int main(int argc, char* argv[]){
                 return 1; 
             }
         }
+        else if (strcmp(argv[i], "--scale") == 0) {
+        if (i + 1 < argc) {
+            scale_factor = atof(argv[i + 1]); 
+            i++; 
+        } else {
+            printf("Error: You must write a number after '--scale'\n");
+            printf("Correct use: ./motor [--file <ruta>] [--scale <numero>] [--debug]\n");
+            return 1; 
+        }
+    }
         else {
             printf("Unknown argument: %s\n", argv[i]);
         }
@@ -106,8 +117,8 @@ int main(int argc, char* argv[]){
         cube.angle_x = 0;
         cube.angle_y = 0;
 
-    }else if(load_model(&cube, file_path) < 0) {
-        printf("Error: file not found: %s", file_path);
+    }else if(load_model(&cube, file_path, scale_factor) < 0) {
+        printf("Error: loading model: %s", file_path);
         exit(0);
     };
 
@@ -139,8 +150,15 @@ int main(int argc, char* argv[]){
         WIDTH, HEIGHT
     );
 
+
+    float yaw = 90.0f;   // looking to the front
+    float pitch = 0.0f;  // looking strigt
+    float sensitivity = 0.1f;
+
+
     vec3 camera_pos = (vec3){0, 0, -0.5};
     vec3 camera_target = (vec3){0, 0, 0};
+    vec3 camera_front = (vec3){0.0f, 0.0f, 1.0f};
     vec3 up_vector = (vec3){0, 1, 0};
     vec3 light_origin = (vec3){4, -3, -1};
 
@@ -161,7 +179,7 @@ int main(int argc, char* argv[]){
     SDL_Event event;
 
     //t_init = clock();
-
+    SDL_SetRelativeMouseMode(SDL_TRUE);
     while (running) {
         //events
         while (SDL_PollEvent(&event)) { 
@@ -188,6 +206,20 @@ int main(int argc, char* argv[]){
 
                     last_mouse_x = event.motion.x;
                     last_mouse_y = event.motion.y;
+                }else{
+                    yaw   -= event.motion.xrel * sensitivity;
+                    pitch += event.motion.yrel * sensitivity; 
+
+                    if (pitch > 89.0f)  pitch = 89.0f;
+                    if (pitch < -89.0f) pitch = -89.0f;
+
+
+                    float yaw_rad = yaw * PI / 180.0f;
+                    float pitch_rad = pitch * PI / 180.0f;
+
+                    camera_front.x = cos(yaw_rad) * cos(pitch_rad);
+                    camera_front.y = sin(pitch_rad);
+                    camera_front.z = sin(yaw_rad) * cos(pitch_rad);
                 }
             }else if (event.type == SDL_MOUSEWHEEL) { //mouse wheel movement
                 if (event.wheel.y > 0 && fov_degrees > 30) {
@@ -201,27 +233,43 @@ int main(int argc, char* argv[]){
 
                 }
             }else if (event.type == SDL_KEYDOWN) { //keyboard inputs
-            switch (event.key.keysym.sym) {
-                case SDLK_w:
-                    camera_pos.z += 0.5f;
-                    break;
-                case SDLK_s:
-                    camera_pos.z -= 0.5f;
-                    break;
-                case SDLK_a:
-                    camera_pos.x -= 0.5f;
-                    camera_target.x -= 0.5f;
-                    break;
-                case SDLK_d:
-                    camera_pos.x += 0.5f;
-                    camera_target.x += 0.5f;
-                    break;
-                case SDLK_ESCAPE:
-                    running = 0;
-                    break;
+                vec3 camera_right;
+                camera_right.x = camera_front.y * up_vector.z - camera_front.z * up_vector.y;
+                camera_right.y = camera_front.z * up_vector.x - camera_front.x * up_vector.z;
+                camera_right.z = camera_front.x * up_vector.y - camera_front.y * up_vector.x;
+
+                switch (event.key.keysym.sym) {
+                    case SDLK_w: 
+                        camera_pos.x += camera_front.x * movement_factor;
+                        camera_pos.y += camera_front.y * movement_factor;
+                        camera_pos.z += camera_front.z * movement_factor;
+                        break;
+                    case SDLK_s: 
+                        camera_pos.x -= camera_front.x * movement_factor;
+                        camera_pos.y -= camera_front.y * movement_factor;
+                        camera_pos.z -= camera_front.z * movement_factor;
+                        break;
+                    case SDLK_a: 
+                        camera_pos.x -= camera_right.x * movement_factor;
+                        camera_pos.z -= camera_right.z * movement_factor;
+                        break;
+                    case SDLK_d: 
+                        camera_pos.x += camera_right.x * movement_factor;
+                        camera_pos.z += camera_right.z * movement_factor;
+                        break;
+                    case SDLK_ESCAPE:
+                        running = 0;
+                        break;
+                }
+            } else if (event.type == SDL_MOUSEMOTION) {
+                
+
             }
         }
-        }
+
+        camera_target.x = camera_pos.x + camera_front.x;
+        camera_target.y = camera_pos.y + camera_front.y;
+        camera_target.z = camera_pos.z + camera_front.z;
 
         mat4x4 mat_view = matrix_make_lookat(camera_pos, camera_target, up_vector);
 
@@ -229,7 +277,7 @@ int main(int argc, char* argv[]){
             pixels[i] = 0xFF000000;
             z_buffer[i] = 0;
         } 
-      
+        
 
         rotate_figure(&cube);
 

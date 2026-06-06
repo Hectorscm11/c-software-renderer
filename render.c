@@ -52,6 +52,11 @@ void draw_triangle(uint32_t* pixels, float* z_buffer, figure* figure, triangle* 
     point p1 = mat4x4_mul_vec3(view_mat, figure->transformed_vertices[triangle->b]);
     point p2 = mat4x4_mul_vec3(view_mat, figure->transformed_vertices[triangle->c]);
 
+    float near_plane = 0.1f;
+    if (p0.z < near_plane || p1.z < near_plane || p2.z < near_plane) {
+        return; 
+    }
+
     p0 = mat4x4_mul_vec3(proj_mat, p0);
     p1 = mat4x4_mul_vec3(proj_mat, p1);
     p2 = mat4x4_mul_vec3(proj_mat, p2);

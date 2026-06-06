@@ -3,6 +3,6 @@
 
 #include "types.h"
 
-int load_model(figure* figure, char* file);
+int load_model(figure* figure, char* file, float scale_factor);
 
 #endif
