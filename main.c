@@ -4,6 +4,7 @@
 #include <string.h>
 #include <SDL2/SDL.h>
 #include <math.h>
+#include <float.h>
 
 #include "types.h"
 #include "math3d.h"
@@ -14,8 +15,6 @@
 #define HEIGHT 900
 
 #define FOV_DEGREES 90
-#define Z_NEAR 0.1
-#define Z_FAR 1000
 
 #define PIXELS_PER_POINT 250
 
@@ -160,7 +159,7 @@ int main(int argc, char* argv[]){
     vec3 camera_target = (vec3){0, 0, 0};
     vec3 camera_front = (vec3){0.0f, 0.0f, 1.0f};
     vec3 up_vector = (vec3){0, 1, 0};
-    vec3 light_origin = (vec3){4, -3, -1};
+    vec3 light_origin = (vec3){4 * scale_factor, -3 * scale_factor, -1 * scale_factor};
 
     mat4x4 proj_matrix = init_projection_matrix((float)FOV_DEGREES, (float)HEIGHT / (float)WIDTH, (float)Z_NEAR, (float)Z_FAR);
 
@@ -250,12 +249,12 @@ int main(int argc, char* argv[]){
                         camera_pos.z -= camera_front.z * movement_factor;
                         break;
                     case SDLK_a: 
-                        camera_pos.x -= camera_right.x * movement_factor;
-                        camera_pos.z -= camera_right.z * movement_factor;
-                        break;
-                    case SDLK_d: 
                         camera_pos.x += camera_right.x * movement_factor;
                         camera_pos.z += camera_right.z * movement_factor;
+                        break;
+                    case SDLK_d: 
+                        camera_pos.x -= camera_right.x * movement_factor;
+                        camera_pos.z -= camera_right.z * movement_factor;
                         break;
                     case SDLK_ESCAPE:
                         running = 0;
@@ -275,7 +274,7 @@ int main(int argc, char* argv[]){
 
         for (int i = 0; i < WIDTH * HEIGHT; i++){
             pixels[i] = 0xFF000000;
-            z_buffer[i] = 0;
+            z_buffer[i] = -FLT_MAX;
         } 
         
 

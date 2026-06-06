@@ -60,7 +60,6 @@ point rotate_point(point p, float angle_x, float angle_y){
 void rotate_figure(figure* figure){
     for(int i = 0; i < figure->n_vertices; i++){
         figure->transformed_vertices[i] = rotate_point(figure->vertices[i], figure->angle_x, figure->angle_y);
-        figure->transformed_vertices[i].z += 3.0f;
     }
 }
 
@@ -75,6 +74,11 @@ float calc_triangle_aliniation(figure* figure, triangle* tri, vec3 vec) {
 
     vec3 normal = vec3_cross(u, v);
     normal = vec3_normalize(normal);
+    
+    float length = sqrt(normal.x*normal.x + normal.y*normal.y + normal.z*normal.z);
+    normal.x /= length;
+    normal.y /= length;
+    normal.z /= length;
 
     vec3 camera_vec = vec3_sub((vec3)vertex_a, vec); 
     camera_vec = vec3_normalize(camera_vec);

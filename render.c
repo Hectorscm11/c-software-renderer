@@ -52,11 +52,15 @@ void draw_triangle(uint32_t* pixels, float* z_buffer, figure* figure, triangle* 
     point p1 = mat4x4_mul_vec3(view_mat, figure->transformed_vertices[triangle->b]);
     point p2 = mat4x4_mul_vec3(view_mat, figure->transformed_vertices[triangle->c]);
 
-    float near_plane = 0.1f;
-    if (p0.z < near_plane || p1.z < near_plane || p2.z < near_plane) {
+    if (p0.z < Z_NEAR || p1.z < Z_NEAR || p2.z < Z_NEAR) {
         return; 
     }
 
+    float inv_z0 = 1.0f / p0.z;
+    float inv_z1 = 1.0f / p1.z;
+    float inv_z2 = 1.0f / p2.z;
+
+    // 3. Proyectamos a la pantalla 2D
     p0 = mat4x4_mul_vec3(proj_mat, p0);
     p1 = mat4x4_mul_vec3(proj_mat, p1);
     p2 = mat4x4_mul_vec3(proj_mat, p2);
@@ -64,18 +68,6 @@ void draw_triangle(uint32_t* pixels, float* z_buffer, figure* figure, triangle* 
     scale_point(&p0);
     scale_point(&p1);
     scale_point(&p2);
-
-    p0.x = (int)roundf(p0.x);
-    p0.y = (int)roundf(p0.y);
-    p1.x = (int)roundf(p1.x); 
-    p1.y = (int)roundf(p1.y);
-    p2.x = (int)roundf(p2.x); 
-    p2.y = (int)roundf(p2.y);
-
-    //z-buffer
-    float inv_z0 = 1.0 / figure->transformed_vertices[triangle->a].z;
-    float inv_z1 = 1.0 / figure->transformed_vertices[triangle->b].z;
-    float inv_z2 = 1.0 / figure->transformed_vertices[triangle->c].z;
 
     if (p0.y > p1.y) {
         SWAP(point, p0, p1);
@@ -198,8 +190,6 @@ void draw_triangles_edges(uint32_t* pixels,figure* figure, mat4x4 mat){
     }
 }
 
-
-
 void draw_edges(uint32_t* pixels, point* vertices, edge* edges, int n_edges, mat4x4 mat, uint32_t color){
     point projected_points[100];
     for(int i = 0; i < 8; i++){
@@ -211,7 +201,6 @@ void draw_edges(uint32_t* pixels, point* vertices, edge* edges, int n_edges, mat
     }
 
 }
-
 
 void draw_horizontal_line(uint32_t* pixels, float* z_buffer, int y,int x_left,int x_rigth ,float inv_z_left,float inv_z_rigth ,uint32_t color){
     if (y < 0 || y >= HEIGHT || x_left >= x_rigth || x_rigth <= 0 || x_left >= WIDTH) {
@@ -247,8 +236,6 @@ void draw_triangles(uint32_t* pixels, float* z_buffer, figure* figure, mat4x4 pr
         if(figure->triangles[i].visible == 1) draw_triangle(pixels, z_buffer, figure, &figure->triangles[i], proj_mat, view_mat, light_origin, 0xFFFFFFFF);
     }
 }
-
-
 
 mat4x4 init_projection_matrix(float fov_degrees, float aspect_ratio, float z_near, float z_far) {
     mat4x4 mat = {0};
