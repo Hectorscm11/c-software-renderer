@@ -6,10 +6,14 @@
 #include <math.h>
 #include <float.h>
 
-#include "types.h"
-#include "math3d.h"
-#include "render.h"
-#include "load.h"
+extern "C" {
+    #include "types.h"
+    #include "math/math3d.h"
+    #include "render/render.h"
+    #include "load/load.h"
+}
+
+#include "entity/entity.h"
 
 #define WIDTH 1400
 #define HEIGHT 900
@@ -66,60 +70,10 @@ int main(int argc, char* argv[]){
     }
 
 
-    figure cube;
-    if(file_path == NULL){
-        static point def_vertices[] = {
-            {-1, -1, -1}, {1, -1, -1}, {1, 1, -1}, {-1, 1, -1},
-            {-1, -1,  1}, {1, -1,  1}, {1, 1,  1}, {-1, 1,  1}  
-        };
-        static point def_transformed[] = {
-            {-1, -1, -1}, {1, -1, -1}, {1, 1, -1}, {-1, 1, -1},
-            {-1, -1,  1}, {1, -1,  1}, {1, 1,  1}, {-1, 1,  1}  
-        };
-        static triangle def_triangles[] = {
-            // front face (z = -1)
-            {0, 2, 1, 1, 0}, {0, 3, 2, 1, 0},
-            
-            // back face (z = 1)
-            {5, 7, 4, 1, 0}, {5, 6, 7, 1, 0},
-            
-            // left face (x = -1)
-            {4, 3, 0, 1, 0}, {4, 7, 3, 1, 0},
-            
-            // rigth face (x = 1)
-            {1, 6, 5, 1, 0}, {1, 2, 6, 1, 0},
-            
-            // upper face (y = 1)
-            {3, 6, 2, 1, 0}, {3, 7, 6, 1, 0},
-            
-            // lower face (y = -1)
-            {4, 1, 5, 1, 0}, {4, 0, 1, 1, 0}
-        };
-        static edge def_edges[] = {
-            //front face
-            {0, 1}, {1, 2}, {2, 3}, {3, 0},
-            //back face
-            {4, 5}, {5, 6}, {6, 7}, {7, 4},
-            //conecting edges
-            {0, 4}, {1, 5}, {2, 6}, {3, 7}
-        };
-
-        cube.vertices = def_vertices;
-        cube.transformed_vertices = def_transformed;
-        cube.triangles = def_triangles;
-        cube.edges = def_edges;
-        
-        cube.n_triangles = 12;
-        cube.n_edges = 12;
-        cube.n_vertices = 8;
-        cube.position = (point){0, 0, 0};
-        cube.angle_x = 0;
-        cube.angle_y = 0;
-
-    }else if(load_model(&cube, file_path, scale_factor) < 0) {
-        printf("Error: loading model: %s", file_path);
-        exit(0);
-    };
+    figure* terrain_figure = (figure*)malloc(sizeof(figure));
+    Entity terrain(terrain_figure, (point){0.0f, 0.0f, 0.0f}, 0xFFFF0000, false);
+    terrain.load_figure(file_path, scale_factor);
+    terrain.rotate((float)PI, 0.0f);
 
 
 
@@ -197,14 +151,15 @@ int main(int argc, char* argv[]){
             }
             else if (event.type == SDL_MOUSEMOTION) { //mouse movement
                 if (is_dragging) {
+                    
                     delta_x = event.motion.x - last_mouse_x;
                     delta_y = event.motion.y - last_mouse_y;
 
-                    cube.angle_y -= delta_x * 0.01f; 
-                    cube.angle_x += delta_y * 0.01f; 
+                    terrain.rotate(delta_y * 0.01f, -delta_x * 0.01f);
 
                     last_mouse_x = event.motion.x;
                     last_mouse_y = event.motion.y;
+                    
                 }else{
                     yaw   -= event.motion.xrel * sensitivity;
                     pitch += event.motion.yrel * sensitivity; 
@@ -278,13 +233,7 @@ int main(int argc, char* argv[]){
         } 
         
 
-        rotate_figure(&cube);
-
-        calc_triangles_aliniation(&cube, camera_pos);
-
-        draw_triangles(pixels, z_buffer, &cube, proj_matrix, mat_view, light_origin);
-
-        if(debug) draw_triangles_edges(pixels, &cube, proj_matrix);
+        terrain.draw(pixels, z_buffer, proj_matrix, mat_view, light_origin, camera_pos);
 
         //draw_edges(pixels, cube.transformed_vertices, cube.edges, cube.n_edges, proj_matrix, 0xFFFF0000);
 

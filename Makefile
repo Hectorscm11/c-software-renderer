@@ -1,14 +1,27 @@
 CC = gcc
-CFLAGS = -Wall -Wextra -O3 -ffast-math -march=native -std=c99 $(shell pkg-config --cflags sdl2)
+CXX = g++
+
+CFLAGS = -Wall -Wextra -O3 -ffast-math -march=native -std=c99 -fopenmp -Isrc $(shell pkg-config --cflags sdl2)
+CXXFLAGS = -Wall -Wextra -O3 -ffast-math -march=native -std=c++17 -fopenmp -Isrc $(shell pkg-config --cflags sdl2)
+
 LIBS = $(shell pkg-config --libs sdl2) -lm
 TARGET = renderer
-SRC = main.c types.h math3d.h math3d.c render.h render.c load.h load.c
-OBJ = main.c math3d.c render.c load.c
+
+C_SRC = src/math/math3d.c src/render/render.c src/load/load.c
+CPP_SRC = src/core/main.cpp src/entity/entity.cpp
+
+OBJ = $(C_SRC:.c=.o) $(CPP_SRC:.cpp=.o)
 
 all: $(TARGET)
 
-$(TARGET): $(SRC)
-	$(CC) $(CFLAGS) $(OBJ) -o $(TARGET) $(LIBS)
+$(TARGET): $(OBJ)
+	$(CXX) $(OBJ) -o $(TARGET) $(LIBS) -fopenmp
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+%.o: %.cpp
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(TARGET)
+	rm -f $(TARGET) $(OBJ)

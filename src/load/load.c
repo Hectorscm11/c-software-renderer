@@ -3,7 +3,7 @@
 #include <string.h>
 #include "load.h"
 
-int load_model(figure* figure, char* file, float scale_factor){
+int load_model(figure* figure, point** transformed_vertices, char* file, float scale_factor){
     FILE* fp = fopen(file, "r");
     if (fp == NULL) {
         printf("Error: File not found '%s'\n", file);
@@ -38,10 +38,10 @@ int load_model(figure* figure, char* file, float scale_factor){
     }
 
     figure->vertices = (vec3*)malloc(figure->n_vertices * sizeof(vec3));
-    figure->transformed_vertices = (vec3*)malloc(figure->n_vertices * sizeof(vec3));
+    *transformed_vertices = (point*)malloc(figure->n_vertices * sizeof(point));
     figure->triangles = (triangle*)malloc(figure->n_triangles * sizeof(triangle));
 
-    if (!figure->vertices || !figure->transformed_vertices || !figure->triangles) {
+    if (!figure->vertices || !transformed_vertices || !figure->triangles) {
         printf("Error: Memory management failed.\n");
         fclose(fp);
         return -2;
@@ -102,11 +102,9 @@ int load_model(figure* figure, char* file, float scale_factor){
 
     figure->n_edges = 0;
     figure->edges = NULL;
-    figure->n_triangles = t_idx; // Esto ahora es el total real
+    figure->n_triangles = t_idx;
     figure->n_vertices = v_idx;
-    figure->position = (point){0.0f, 0.0f, 0.0f};
-    figure->angle_x = 0.0f;
-    figure->angle_y = 0.0f;
+    
 
     fclose(fp);
     return 0;

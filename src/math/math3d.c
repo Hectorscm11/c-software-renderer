@@ -57,16 +57,16 @@ point rotate_point(point p, float angle_x, float angle_y){
     return rotated;
 }
 
-void rotate_figure(figure* figure){
+void rotate_figure(figure* figure, point* transformed_vertices, vec3 orientation){
     for(int i = 0; i < figure->n_vertices; i++){
-        figure->transformed_vertices[i] = rotate_point(figure->vertices[i], figure->angle_x, figure->angle_y);
+        transformed_vertices[i] = rotate_point(figure->vertices[i], orientation.x, orientation.y);
     }
 }
 
-float calc_triangle_aliniation(figure* figure, triangle* tri, vec3 vec) { 
-    point vertex_a = figure->transformed_vertices[tri->a];
-    point vertex_b = figure->transformed_vertices[tri->b];
-    point vertex_c = figure->transformed_vertices[tri->c];
+float calc_triangle_aliniation(figure* figure, point* transformed_vertices, triangle* tri, vec3 vec) { 
+    point vertex_a = transformed_vertices[tri->a];
+    point vertex_b = transformed_vertices[tri->b];
+    point vertex_c = transformed_vertices[tri->c];
 
 
     vec3 u = vec3_sub((vec3)vertex_b, (vec3)vertex_a);
@@ -86,12 +86,12 @@ float calc_triangle_aliniation(figure* figure, triangle* tri, vec3 vec) {
     return vec3_dot(normal, camera_vec);
 }
 
-void calc_triangles_aliniation(figure* figure, vec3 camera_pos) {
+void calc_triangles_aliniation(figure* figure, point* transformed_vertices, vec3 camera_pos) {
     for(int i = 0; i < figure->n_triangles; i++) {
  
         triangle* tri = &figure->triangles[i]; 
 
-        tri->aliniation = calc_triangle_aliniation(figure, tri, camera_pos);
+        tri->aliniation = calc_triangle_aliniation(figure, transformed_vertices, tri, camera_pos);
 
         if(tri->aliniation < 0) {
             tri->visible = 1;

@@ -35,15 +35,11 @@ typedef struct edge {
 
 typedef struct figure {
     point* vertices;
-    point* transformed_vertices;
     int n_vertices;
     triangle* triangles;
     int n_triangles;
     edge* edges;
     int n_edges;
-    point position;
-    float angle_x;
-    float angle_y;
 } figure;
 
 #endif

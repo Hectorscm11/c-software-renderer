@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include "render.h"
-#include "math3d.h"
+#include "math/math3d.h"
 
 static inline void draw_pixel(uint32_t* pixels, int x, int y, uint32_t color){
     if (x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT) {
@@ -43,14 +43,14 @@ uint32_t calc_color_brightness(uint32_t color, float light_aliniation){
     return (a << 24) | (r << 16) | (g << 8) | b;
 }
 
-void draw_triangle(uint32_t* pixels, float* z_buffer, figure* figure, triangle* triangle, mat4x4 proj_mat, mat4x4 view_mat, vec3 light_origin, uint32_t color){
+void draw_triangle(uint32_t* pixels, float* z_buffer, figure* figure, point* transformed_vertices, triangle* triangle, mat4x4 proj_mat, mat4x4 view_mat, vec3 light_origin, uint32_t color){
 
-    float light_aliniation = calc_triangle_aliniation(figure, triangle, light_origin);
+    float light_aliniation = calc_triangle_aliniation(figure, transformed_vertices, triangle, light_origin);
     color = calc_color_brightness(color, light_aliniation);
 
-    point p0 = mat4x4_mul_vec3(view_mat, figure->transformed_vertices[triangle->a]);
-    point p1 = mat4x4_mul_vec3(view_mat, figure->transformed_vertices[triangle->b]);
-    point p2 = mat4x4_mul_vec3(view_mat, figure->transformed_vertices[triangle->c]);
+    point p0 = mat4x4_mul_vec3(view_mat, transformed_vertices[triangle->a]);
+    point p1 = mat4x4_mul_vec3(view_mat, transformed_vertices[triangle->b]);
+    point p2 = mat4x4_mul_vec3(view_mat, transformed_vertices[triangle->c]);
 
     if (p0.z < Z_NEAR || p1.z < Z_NEAR || p2.z < Z_NEAR) {
         return; 
@@ -163,6 +163,7 @@ void draw_line(uint32_t* pixels, point *a, point *b, uint32_t color){
 }
 
 void draw_triangles_edges(uint32_t* pixels,figure* figure, mat4x4 mat){
+    /*
     for(int i = 0; i < figure->n_triangles; i++){
         if(figure->triangles[i].visible == 1){
                 
@@ -187,7 +188,7 @@ void draw_triangles_edges(uint32_t* pixels,figure* figure, mat4x4 mat){
             draw_line(pixels, &pC, &pA, 0xFF00FF00);
             
         }
-    }
+    }*/
 }
 
 void draw_edges(uint32_t* pixels, point* vertices, edge* edges, int n_edges, mat4x4 mat, uint32_t color){
@@ -231,9 +232,9 @@ void draw_horizontal_line(uint32_t* pixels, float* z_buffer, int y,int x_left,in
     }       
 }
 
-void draw_triangles(uint32_t* pixels, float* z_buffer, figure* figure, mat4x4 proj_mat, mat4x4 view_mat, vec3 light_origin){
+void draw_triangles(uint32_t* pixels, float* z_buffer, figure* figure, point* transformed_vertices, mat4x4 proj_mat, mat4x4 view_mat, vec3 light_origin){
     for(int i = 0; i < figure->n_triangles; i++){
-        if(figure->triangles[i].visible == 1) draw_triangle(pixels, z_buffer, figure, &figure->triangles[i], proj_mat, view_mat, light_origin, 0xFFFFFFFF);
+        if(figure->triangles[i].visible == 1) draw_triangle(pixels, z_buffer, figure, transformed_vertices, &figure->triangles[i], proj_mat, view_mat, light_origin, 0xFFFFFFFF);
     }
 }
 
