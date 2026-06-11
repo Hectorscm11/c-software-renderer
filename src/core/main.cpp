@@ -72,10 +72,21 @@ int main(int argc, char* argv[]){
 
     figure* terrain_figure = (figure*)malloc(sizeof(figure));
     Entity terrain(terrain_figure, (point){0.0f, 0.0f, 0.0f}, 0xFFFF0000, false);
-    terrain.load_figure(file_path, scale_factor);
+    if(terrain.load_figure(file_path, scale_factor) < 0){
+        printf("Error loading figure");
+        exit(0);
+    }
     terrain.rotate((float)PI, 0.0f);
 
 
+    figure* tractor_figure = (figure*)malloc(sizeof(figure));
+    Entity tractor(tractor_figure, (point){0.0f, -2.0f, 0.0f}, 0xFFFF0000, true);
+    char path[50] = "./Models/OBJ format/tractor.obj";
+    if(tractor.load_figure(path, 1) < 0){
+        printf("Error loading figure");
+        exit(0);
+    }
+    tractor.rotate((float)PI, 0.0f);
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         printf("Error trying to inicialice SDL: %s\n", SDL_GetError());
@@ -105,11 +116,11 @@ int main(int argc, char* argv[]){
 
 
     float yaw = 90.0f;   // looking to the front
-    float pitch = 0.0f;  // looking strigt
+    float pitch = 0.0f;  // looking straight
     float sensitivity = 0.1f;
 
 
-    vec3 camera_pos = (vec3){0, 0, -0.5};
+    vec3 camera_pos = (vec3){0, 0, -1.5};
     vec3 camera_target = (vec3){0, 0, 0};
     vec3 camera_front = (vec3){0.0f, 0.0f, 1.0f};
     vec3 up_vector = (vec3){0, 1, 0};
@@ -128,12 +139,23 @@ int main(int argc, char* argv[]){
     int delta_x;
     int delta_y;
 
+
+    float frequency = (float)SDL_GetPerformanceFrequency();
+    uint64_t last_frame_time = SDL_GetPerformanceCounter();
+
+
     int running = 1;
     SDL_Event event;
 
     //t_init = clock();
     SDL_SetRelativeMouseMode(SDL_TRUE);
     while (running) {
+
+        //time from las frame (for physics)
+        uint64_t current_frame_time = SDL_GetPerformanceCounter();
+        float dt = (float)(current_frame_time - last_frame_time) / frequency;
+        last_frame_time = current_frame_time;
+
         //events
         while (SDL_PollEvent(&event)) { 
             if (event.type == SDL_QUIT) running = 0; //close window
@@ -232,8 +254,9 @@ int main(int argc, char* argv[]){
             z_buffer[i] = -FLT_MAX;
         } 
         
-
+        tractor.update_physics(dt);
         terrain.draw(pixels, z_buffer, proj_matrix, mat_view, light_origin, camera_pos);
+        tractor.draw(pixels, z_buffer, proj_matrix, mat_view, light_origin, camera_pos);
 
         //draw_edges(pixels, cube.transformed_vertices, cube.edges, cube.n_edges, proj_matrix, 0xFFFF0000);
 

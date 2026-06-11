@@ -21,6 +21,10 @@ vec3 vec3_normalize(vec3 v) {
     return result;
 }
 
+vec3 vec3_add(vec3 v1, vec3 v2){
+    return (vec3){v1.x + v2.x, v1.y + v2.y, v1.z + v2.z};
+}
+
 vec3 vec3_sub(vec3 v1, vec3 v2){
     vec3 v3;
     v3.x = v1.x - v2.x;
@@ -63,7 +67,15 @@ void rotate_figure(figure* figure, point* transformed_vertices, vec3 orientation
     }
 }
 
-float calc_triangle_aliniation(figure* figure, point* transformed_vertices, triangle* tri, vec3 vec) { 
+void traslate_figure(point* transformed_vertices, int n_vertices, point position){
+    for(int i = 0; i < n_vertices; i++){
+        transformed_vertices[i].x += position.x;
+        transformed_vertices[i].y += position.y;
+        transformed_vertices[i].z += position.z;
+    }
+}
+
+float calc_triangle_aliniation(point* transformed_vertices, triangle* tri, vec3 vec) { 
     point vertex_a = transformed_vertices[tri->a];
     point vertex_b = transformed_vertices[tri->b];
     point vertex_c = transformed_vertices[tri->c];
@@ -91,7 +103,7 @@ void calc_triangles_aliniation(figure* figure, point* transformed_vertices, vec3
  
         triangle* tri = &figure->triangles[i]; 
 
-        tri->aliniation = calc_triangle_aliniation(figure, transformed_vertices, tri, camera_pos);
+        tri->aliniation = calc_triangle_aliniation(transformed_vertices, tri, camera_pos);
 
         if(tri->aliniation < 0) {
             tri->visible = 1;

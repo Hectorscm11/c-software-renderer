@@ -18,6 +18,7 @@ private:
     figure* m_figure;
     point* transformed_vertices;
     uint32_t color;
+    vec3 velocity;
 
     
 
@@ -25,6 +26,7 @@ public:
     Entity(figure* m_figure, point start_pos, uint32_t color, bool gravity);
     int load_figure(char* file, float scale_factor);
     void rotate(float delta_x, float delta_y);
+    void update_physics(float dt);
     void draw(uint32_t* pixels, float* z_buffer, mat4x4 proj_mat, mat4x4 view_mat, vec3 light, vec3 camera_pos);
 };
 

@@ -45,7 +45,7 @@ uint32_t calc_color_brightness(uint32_t color, float light_aliniation){
 
 void draw_triangle(uint32_t* pixels, float* z_buffer, figure* figure, point* transformed_vertices, triangle* triangle, mat4x4 proj_mat, mat4x4 view_mat, vec3 light_origin, uint32_t color){
 
-    float light_aliniation = calc_triangle_aliniation(figure, transformed_vertices, triangle, light_origin);
+    float light_aliniation = calc_triangle_aliniation(transformed_vertices, triangle, light_origin);
     color = calc_color_brightness(color, light_aliniation);
 
     point p0 = mat4x4_mul_vec3(view_mat, transformed_vertices[triangle->a]);
