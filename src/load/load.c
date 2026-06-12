@@ -3,7 +3,7 @@
 #include <string.h>
 #include "load.h"
 
-int load_model(figure* figure, point** transformed_vertices, char* file, float scale_factor){
+int load_model(figure* figure, point** transformed_vertices, char* file){
     FILE* fp = fopen(file, "r");
     if (fp == NULL) {
         printf("Error: File not found '%s'\n", file);
@@ -60,10 +60,6 @@ int load_model(figure* figure, point** transformed_vertices, char* file, float s
                    &figure->vertices[v_idx].x, 
                    &figure->vertices[v_idx].y, 
                    &figure->vertices[v_idx].z);
-
-            figure->vertices[v_idx].x *= scale_factor;
-            figure->vertices[v_idx].y *= scale_factor;
-            figure->vertices[v_idx].z *= scale_factor;
 
             v_idx++;
         }

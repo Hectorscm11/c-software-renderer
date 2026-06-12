@@ -5,6 +5,7 @@
 #include <SDL2/SDL.h>
 #include <math.h>
 #include <float.h>
+#include <vector>
 
 extern "C" {
     #include "types.h"
@@ -14,6 +15,7 @@ extern "C" {
 }
 
 #include "entity/entity.h"
+#include "physics/physics.h"
 
 #define WIDTH 1400
 #define HEIGHT 900
@@ -69,10 +71,11 @@ int main(int argc, char* argv[]){
         }
     }
 
+    std::vector<Entity*> scene_entities;
 
     figure* terrain_figure = (figure*)malloc(sizeof(figure));
-    Entity terrain(terrain_figure, (point){0.0f, 0.0f, 0.0f}, 0xFFFF0000, false);
-    if(terrain.load_figure(file_path, scale_factor) < 0){
+    Entity terrain(0, terrain_figure, (point){0.0f, 0.0f, 0.0f}, 0xFFFF0000, false, scale_factor);
+    if(terrain.load_figure(file_path) < 0){
         printf("Error loading figure");
         exit(0);
     }
@@ -80,13 +83,18 @@ int main(int argc, char* argv[]){
 
 
     figure* tractor_figure = (figure*)malloc(sizeof(figure));
-    Entity tractor(tractor_figure, (point){0.0f, -2.0f, 0.0f}, 0xFFFF0000, true);
+    Entity tractor(1, tractor_figure, (point){0.0f, -5.0f, 0.0f}, 0xFFFF0000, true, 1);
     char path[50] = "./Models/OBJ format/tractor.obj";
-    if(tractor.load_figure(path, 1) < 0){
+    if(tractor.load_figure(path) < 0){
         printf("Error loading figure");
         exit(0);
     }
     tractor.rotate((float)PI, 0.0f);
+
+
+    scene_entities.push_back(&terrain);
+    scene_entities.push_back(&tractor);
+
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         printf("Error trying to inicialice SDL: %s\n", SDL_GetError());
@@ -120,7 +128,7 @@ int main(int argc, char* argv[]){
     float sensitivity = 0.1f;
 
 
-    vec3 camera_pos = (vec3){0, 0, -1.5};
+    vec3 camera_pos = (vec3){0.0f, -3.0f, -2.5f};
     vec3 camera_target = (vec3){0, 0, 0};
     vec3 camera_front = (vec3){0.0f, 0.0f, 1.0f};
     vec3 up_vector = (vec3){0, 1, 0};
@@ -254,9 +262,36 @@ int main(int argc, char* argv[]){
             z_buffer[i] = -FLT_MAX;
         } 
         
-        tractor.update_physics(dt);
+        terrain.update_hitbox(0);
+        tractor.update_hitbox(0);
+
+        for (Entity* e : scene_entities) {
+            e->update_physics(dt);
+        }
+
+        for (size_t i = 0; i < scene_entities.size(); i++) {
+            for (size_t j = i + 1; j < scene_entities.size(); j++) { 
+                
+                Entity* e1 = scene_entities[i];
+                Entity* e2 = scene_entities[j];
+
+                if (check_aabb_collision(e1, e2)) {
+                    resolver_colision(e1, e2);
+                }else{
+                    e1->colliding = false;
+                    e2->colliding = false;
+                }
+            }
+        }
+
         terrain.draw(pixels, z_buffer, proj_matrix, mat_view, light_origin, camera_pos);
         tractor.draw(pixels, z_buffer, proj_matrix, mat_view, light_origin, camera_pos);
+
+        if(debug){
+            for (Entity* e : scene_entities) {
+                e->draw_hitbox(pixels, proj_matrix, mat_view);
+            }
+        }
 
         //draw_edges(pixels, cube.transformed_vertices, cube.edges, cube.n_edges, proj_matrix, 0xFFFF0000);
 

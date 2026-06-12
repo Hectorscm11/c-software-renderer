@@ -3,6 +3,6 @@
 
 #include "types.h"
 
-int load_model(figure* figure, point** transformed_vertices, char* file, float scale_factor);
+int load_model(figure* figure, point** transformed_vertices, char* file);
 
 #endif

@@ -6,6 +6,7 @@
 
 
 void draw_line(uint32_t* pixels, point *a, point *b, uint32_t color);
+void draw_clipped_edge(uint32_t* pixels, point a, point b, mat4x4 proj_mat, uint32_t color);
 void draw_triangles_edges(uint32_t* pixels, figure* figure, mat4x4 mat);
 void draw_edges(uint32_t* pixels, point* vertices, edge* edges, int n_edges, mat4x4 mat, uint32_t color);
 void draw_triangles(uint32_t* pixels, float* z_buffer, figure* figure, point* transformed_vertices, mat4x4 proj_mat, mat4x4 view_mat, vec3 light_origin);

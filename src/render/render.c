@@ -60,7 +60,6 @@ void draw_triangle(uint32_t* pixels, float* z_buffer, figure* figure, point* tra
     float inv_z1 = 1.0f / p1.z;
     float inv_z2 = 1.0f / p2.z;
 
-    // 3. Proyectamos a la pantalla 2D
     p0 = mat4x4_mul_vec3(proj_mat, p0);
     p1 = mat4x4_mul_vec3(proj_mat, p1);
     p2 = mat4x4_mul_vec3(proj_mat, p2);
@@ -147,6 +146,7 @@ void draw_line(uint32_t* pixels, point *a, point *b, uint32_t color){
         draw_pixel(pixels, x0, y0, color);
 
         if(x0 == x1 && y0 == y1) break;
+        if(x0 > WIDTH || y0 > HEIGHT) break;
 
         e2 = 2 *err;
 
@@ -161,6 +161,35 @@ void draw_line(uint32_t* pixels, point *a, point *b, uint32_t color){
         } 
     }
 }
+
+static point project_to_screen(point view_p, mat4x4 proj_mat){
+    point p = mat4x4_mul_vec3(proj_mat, view_p); 
+    p.x = (p.x + 1.0f) * 0.5f * WIDTH;
+    p.y = (1.0f + p.y) * 0.5f * HEIGHT;
+    return p;
+  }
+
+
+void draw_clipped_edge(uint32_t* pixels, point a, point b, mat4x4 proj_mat, uint32_t color){
+    char a_in = a.z >= Z_NEAR;
+    char b_in = b.z >= Z_NEAR;
+
+    if(!a_in && !b_in) return;
+
+    if(a_in != b_in){
+        float t = (Z_NEAR - a.z) / (b.z - a.z); 
+        point cut;
+        cut.x = a.x + t * (b.x - a.x);
+        cut.y = a.y + t * (b.y - a.y);
+        cut.z = Z_NEAR;
+        if(a_in) b = cut; else a = cut; 
+    }
+
+    point pa = project_to_screen(a, proj_mat);
+    point pb = project_to_screen(b, proj_mat);
+    draw_line(pixels, &pa, &pb, color);
+}
+
 
 void draw_triangles_edges(uint32_t* pixels,figure* figure, mat4x4 mat){
     /*

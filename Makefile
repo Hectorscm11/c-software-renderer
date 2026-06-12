@@ -8,7 +8,7 @@ LIBS = $(shell pkg-config --libs sdl2) -lm
 TARGET = renderer
 
 C_SRC = src/math/math3d.c src/render/render.c src/load/load.c
-CPP_SRC = src/core/main.cpp src/entity/entity.cpp
+CPP_SRC = src/core/main.cpp src/entity/entity.cpp src/physics/physics.cpp
 
 OBJ = $(C_SRC:.c=.o) $(CPP_SRC:.cpp=.o)
 

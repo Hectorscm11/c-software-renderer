@@ -75,6 +75,14 @@ void traslate_figure(point* transformed_vertices, int n_vertices, point position
     }
 }
 
+void resize_figure(point* transformed_vertices, int n_vertices, float scale){
+    for(int i = 0; i < n_vertices; i++){
+        transformed_vertices[i].x *= scale;
+        transformed_vertices[i].y *= scale;
+        transformed_vertices[i].z *= scale;
+    }
+}
+
 float calc_triangle_aliniation(point* transformed_vertices, triangle* tri, vec3 vec) { 
     point vertex_a = transformed_vertices[tri->a];
     point vertex_b = transformed_vertices[tri->b];
