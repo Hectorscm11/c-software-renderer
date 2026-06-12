@@ -40,6 +40,6 @@ typedef struct figure {
     int n_triangles;
     edge* edges;
     int n_edges;
-} figure;
+} figure, chunk;
 
 #endif

@@ -15,6 +15,8 @@ extern "C" {
 }
 
 #include "entity/entity.h"
+#include "entity/terrain.h"
+#include "entity/object.h"
 #include "physics/physics.h"
 
 #define WIDTH 1400
@@ -71,10 +73,10 @@ int main(int argc, char* argv[]){
         }
     }
 
-    std::vector<Entity*> scene_entities;
+    std::vector<Object*> scene_objects;
 
     figure* terrain_figure = (figure*)malloc(sizeof(figure));
-    Entity terrain(0, terrain_figure, (point){0.0f, 0.0f, 0.0f}, 0xFFFF0000, false, scale_factor);
+    Terrain terrain(0, terrain_figure, (point){0.0f, 0.0f, 0.0f}, 0xFFFF0000, scale_factor);
     if(terrain.load_figure(file_path) < 0){
         printf("Error loading figure");
         exit(0);
@@ -83,7 +85,7 @@ int main(int argc, char* argv[]){
 
 
     figure* tractor_figure = (figure*)malloc(sizeof(figure));
-    Entity tractor(1, tractor_figure, (point){0.0f, -5.0f, 0.0f}, 0xFFFF0000, true, 1);
+    Object tractor(1, tractor_figure, (point){0.0f, -5.0f, 0.0f}, 0xFFFF0000, true, 1);
     char path[50] = "./Models/OBJ format/tractor.obj";
     if(tractor.load_figure(path) < 0){
         printf("Error loading figure");
@@ -92,8 +94,7 @@ int main(int argc, char* argv[]){
     tractor.rotate((float)PI, 0.0f);
 
 
-    scene_entities.push_back(&terrain);
-    scene_entities.push_back(&tractor);
+    scene_objects.push_back(&tractor);
 
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -181,7 +182,7 @@ int main(int argc, char* argv[]){
             }
             else if (event.type == SDL_MOUSEMOTION) { //mouse movement
                 if (is_dragging) {
-                    
+                    /*
                     delta_x = event.motion.x - last_mouse_x;
                     delta_y = event.motion.y - last_mouse_y;
 
@@ -189,7 +190,7 @@ int main(int argc, char* argv[]){
 
                     last_mouse_x = event.motion.x;
                     last_mouse_y = event.motion.y;
-                    
+                    */
                 }else{
                     yaw   -= event.motion.xrel * sensitivity;
                     pitch += event.motion.yrel * sensitivity; 
@@ -262,24 +263,24 @@ int main(int argc, char* argv[]){
             z_buffer[i] = -FLT_MAX;
         } 
         
-        terrain.update_hitbox(0);
+        //terrain.update_hitbox(0);
         tractor.update_hitbox(0);
 
-        for (Entity* e : scene_entities) {
-            e->update_physics(dt);
+        for (Object* o : scene_objects) {
+            o->update_physics(dt);
         }
 
-        for (size_t i = 0; i < scene_entities.size(); i++) {
-            for (size_t j = i + 1; j < scene_entities.size(); j++) { 
+        for (size_t i = 0; i < scene_objects.size(); i++) {
+            for (size_t j = i + 1; j < scene_objects.size(); j++) { 
                 
-                Entity* e1 = scene_entities[i];
-                Entity* e2 = scene_entities[j];
+                Object* o1 = scene_objects[i];
+                Object* o2 = scene_objects[j];
 
-                if (check_aabb_collision(e1, e2)) {
-                    resolver_colision(e1, e2);
+                if (check_aabb_collision(o1, o2)) {
+                    resolver_colision(o1, o2);
                 }else{
-                    e1->colliding = false;
-                    e2->colliding = false;
+                    o1->colliding = false;
+                    o2->colliding = false;
                 }
             }
         }
@@ -288,8 +289,8 @@ int main(int argc, char* argv[]){
         tractor.draw(pixels, z_buffer, proj_matrix, mat_view, light_origin, camera_pos);
 
         if(debug){
-            for (Entity* e : scene_entities) {
-                e->draw_hitbox(pixels, proj_matrix, mat_view);
+            for (Object* o : scene_objects) {
+                o->draw_hitbox(pixels, proj_matrix, mat_view);
             }
         }
 
